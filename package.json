@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "start": "node --env-file=.env --experimental-strip-types src/index.ts",
-    "test": "node --experimental-strip-types --test test/index.test.ts"
+    "test": "node --experimental-strip-types --test test/index.test.ts",
+    "test:integration": "node --env-file=.env.test --experimental-strip-types --test test/wordpress.integration.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0"
