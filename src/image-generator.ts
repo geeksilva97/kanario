@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { config } from "./config.ts";
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2/qwen-image-edit";
@@ -54,12 +55,33 @@ async function pollUntilCompleted(jobId: string): Promise<any> {
   }
 }
 
+const CANVAS_WIDTH = 1280;
+const CANVAS_HEIGHT = 720;
+
+async function padToWidescreen(mascotPath: string): Promise<string> {
+  const mascot = sharp(mascotPath);
+  const { width, height } = await mascot.metadata();
+  if (!width || !height) throw new Error(`Cannot read dimensions of ${mascotPath}`);
+
+  const scale = Math.min(CANVAS_HEIGHT / height, CANVAS_WIDTH / 2 / width);
+  const resized = await mascot.resize(Math.round(width * scale), Math.round(height * scale)).toBuffer();
+
+  const padded = await sharp({
+    create: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
+  })
+    .composite([{ input: resized, gravity: "center" }])
+    .png()
+    .toBuffer();
+
+  return padded.toString("base64");
+}
+
 async function generateSingle(
   prompt: string,
   mascotPath: string,
   seed: number,
 ): Promise<Buffer> {
-  const mascotBase64 = fs.readFileSync(mascotPath).toString("base64");
+  const mascotBase64 = await padToWidescreen(mascotPath);
 
   const body = {
     input: {

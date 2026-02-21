@@ -182,7 +182,7 @@ Simpler (no polling loop), but has a **90-second timeout**. If the worker cold-s
 - **Output is a URL, not base64.** RunPod docs may suggest `output.output_image_base64`, but the actual response uses `output.result` containing a CloudFront URL.
 - **Private repo URLs don't work.** RunPod's worker fetches the image server-side, so any URL must be publicly accessible. Use inline base64 for private assets.
 - **Single image reference.** The `image` field takes one reference image, not multiple.
-- **No width/height params.** Output dimensions are determined by the model.
+- **No width/height params.** Output dimensions match the input image. We pad the mascot onto a 1280×720 white canvas before sending so the output is widescreen.
 
 ## Legacy: Custom RunPod Server
 
@@ -211,4 +211,5 @@ npm test
 
 - Node.js >= 22 (native fetch, `--experimental-strip-types`, `node:test`)
 - Two LLM SDKs: `@google/genai` (Gemini via Vertex AI), `@anthropic-ai/sdk` (Claude)
+- `sharp` for image processing (padding mascot to widescreen canvas)
 - RunPod Hub serverless endpoint for Qwen Image Edit (no custom infra)
