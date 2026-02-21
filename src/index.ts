@@ -1,0 +1,98 @@
+import { parseArgs } from "node:util";
+import fs from "node:fs";
+import path from "node:path";
+import { config, MASCOT_PATHS, OUTPUT_DIR } from "./config.ts";
+import { fetchDraft } from "./wordpress.ts";
+import { generatePrompts } from "./prompt-generator.ts";
+import { generateImages } from "./image-generator.ts";
+
+const { values, positionals } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    "wp-url": { type: "string" },
+    help: { type: "boolean", short: "h" },
+  },
+  allowPositionals: true,
+});
+
+if (values.help || positionals.length === 0) {
+  console.log(`Usage: node --env-file=.env src/index.ts <post-id> [--wp-url <url>]
+
+Fetches a WordPress draft, generates thumbnail prompts via Claude,
+and produces cover images via Qwen Image Edit on RunPod.
+
+Arguments:
+  post-id     WordPress post ID
+
+Options:
+  --wp-url    Override WP_URL from .env
+  -h, --help  Show this help`);
+  process.exit(0);
+}
+
+const postId = positionals[0];
+const wpUrl = values["wp-url"];
+
+// Validate required config
+const missing: string[] = [];
+if (!config.wpUsername) missing.push("WP_USERNAME");
+if (!config.wpAppPassword) missing.push("WP_APP_PASSWORD");
+if (!config.anthropicApiKey) missing.push("ANTHROPIC_API_KEY");
+if (!config.runpodQwenUrl) missing.push("RUNPOD_QWEN_URL");
+if (missing.length > 0) {
+  console.error(`Missing environment variables: ${missing.join(", ")}`);
+  console.error("Copy .env.example to .env and fill in the values.");
+  process.exit(1);
+}
+
+// Validate mascot images exist
+for (const [name, mascotPath] of Object.entries(MASCOT_PATHS)) {
+  if (!fs.existsSync(mascotPath)) {
+    console.error(`Mascot image not found: ${mascotPath}`);
+    process.exit(1);
+  }
+}
+
+// Step 1: Fetch WordPress draft
+console.log(`\n[1/4] Fetching post ${postId} from ${wpUrl || config.wpUrl} ...`);
+const post = await fetchDraft(postId, wpUrl);
+console.log(`  Title: ${post.title}`);
+console.log(`  Content length: ${post.content.length} chars`);
+
+// Step 2: Generate image prompts via Claude
+console.log(`\n[2/4] Generating image prompts via Claude ...`);
+const result = await generatePrompts(post);
+console.log(`  Generated ${result.prompts.length} prompts:`);
+for (const [i, p] of result.prompts.entries()) {
+  console.log(`  ${i + 1}. ${p.scene}`);
+}
+
+// Step 3: Generate images via Qwen on RunPod
+console.log(`\n[3/4] Generating images via Qwen Image Edit ...`);
+const outputDir = path.join(OUTPUT_DIR, postId);
+const allPaths: string[] = [];
+
+for (const [i, prompt] of result.prompts.entries()) {
+  console.log(`\n  Prompt ${i + 1}: ${prompt.scene}`);
+  const paths = await generateImages({
+    prompt: prompt.full_prompt,
+    mascot1Path: MASCOT_PATHS.mascot1,
+    mascot2Path: MASCOT_PATHS.mascot2,
+    outputDir,
+    filenamePrefix: `prompt-${i + 1}`,
+  });
+  allPaths.push(...paths);
+}
+
+// Step 4: Save prompts.json
+console.log(`\n[4/4] Saving metadata ...`);
+const metadata = {
+  post_title: post.title,
+  generated_at: new Date().toISOString(),
+  prompts: result.prompts,
+};
+const metadataPath = path.join(outputDir, "prompts.json");
+fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+console.log(`  Saved ${metadataPath}`);
+
+console.log(`\nDone! Generated ${allPaths.length} images in ${outputDir}`);
