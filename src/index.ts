@@ -2,36 +2,37 @@ import { parseArgs } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
 import { config, OUTPUT_DIR } from "./config.ts";
-import { fetchDraft } from "./wordpress.ts";
+import { fetchDraft, parsePostId } from "./wordpress.ts";
 import { generatePrompts } from "./prompt-generator.ts";
 import { generateImages } from "./image-generator.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
-    "wp-url": { type: "string" },
     help: { type: "boolean", short: "h" },
   },
   allowPositionals: true,
 });
 
 if (values.help || positionals.length === 0) {
-  console.log(`Usage: node --env-file=.env src/index.ts <post-id> [--wp-url <url>]
+  console.log(`Usage: ./kanario <post-id-or-url>
 
 Fetches a WordPress draft, generates thumbnail prompts via Claude,
 and produces cover images via Qwen Image Edit on RunPod.
 
 Arguments:
-  post-id     WordPress post ID
+  post-id-or-url  WordPress post ID or wp-admin edit URL
+
+Examples:
+  ./kanario 12487
+  ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
 
 Options:
-  --wp-url    Override WP_URL from .env
   -h, --help  Show this help`);
   process.exit(0);
 }
 
-const postId = positionals[0];
-const wpUrl = values["wp-url"];
+const postId = parsePostId(positionals[0]);
 
 // Validate required config
 const missing: string[] = [];
@@ -46,8 +47,8 @@ if (missing.length > 0) {
 }
 
 // Step 1: Fetch WordPress draft
-console.log(`\n[1/4] Fetching post ${postId} from ${wpUrl || config.wpUrl} ...`);
-const post = await fetchDraft(postId, wpUrl);
+console.log(`\n[1/4] Fetching post ${postId} from ${config.wpUrl} ...`);
+const post = await fetchDraft(postId);
 console.log(`  Title: ${post.title}`);
 console.log(`  Content length: ${post.content.length} chars`);
 

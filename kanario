@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec node --env-file="$(dirname "$0")/.env" --experimental-strip-types "$(dirname "$0")/src/index.ts" "$@"

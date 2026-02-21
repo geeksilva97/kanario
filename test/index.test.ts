@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { stripHtml } from "../src/wordpress.ts";
+import { stripHtml, parsePostId } from "../src/wordpress.ts";
 import { PROMPT_TEMPLATE, config, PROJECT_ROOT } from "../src/config.ts";
 
 describe("stripHtml", () => {
@@ -62,6 +62,33 @@ describe("PROMPT_TEMPLATE", () => {
 
   it("specifies 16:9 widescreen format", () => {
     assert.ok(PROMPT_TEMPLATE.includes("16:9"));
+  });
+});
+
+describe("parsePostId", () => {
+  it("returns a plain numeric ID as-is", () => {
+    assert.equal(parsePostId("12487"), "12487");
+  });
+
+  it("extracts post ID from a wp-admin edit URL", () => {
+    assert.equal(
+      parsePostId("https://blog.codeminer42.com/wp-admin/post.php?post=12518&action=edit"),
+      "12518",
+    );
+  });
+
+  it("extracts post ID when post param is the only query param", () => {
+    assert.equal(
+      parsePostId("https://example.com/wp-admin/post.php?post=999"),
+      "999",
+    );
+  });
+
+  it("returns the input unchanged for a URL without a post param", () => {
+    assert.equal(
+      parsePostId("https://example.com/some-page"),
+      "https://example.com/some-page",
+    );
   });
 });
 

@@ -19,11 +19,19 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-export async function fetchDraft(
-  postId: string,
-  wpUrl?: string,
-): Promise<WPPost> {
-  const baseUrl = wpUrl || config.wpUrl;
+export function parsePostId(input: string): string {
+  try {
+    const url = new URL(input);
+    const id = url.searchParams.get("post");
+    if (id) return id;
+  } catch {
+    // not a URL, treat as raw post ID
+  }
+  return input;
+}
+
+export async function fetchDraft(postId: string): Promise<WPPost> {
+  const baseUrl = config.wpUrl;
   const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
   const auth = Buffer.from(
     `${config.wpUsername}:${config.wpAppPassword}`,
