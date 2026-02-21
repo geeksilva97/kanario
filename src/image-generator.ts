@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { config, MASCOT_URL } from "./config.ts";
+import { config, MASCOT_PATH } from "./config.ts";
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2/qwen-image-edit";
 const POLL_INTERVAL_MS = 3_000;
@@ -49,10 +49,12 @@ async function generateSingle(
   prompt: string,
   seed: number,
 ): Promise<Buffer> {
+  const mascotBase64 = fs.readFileSync(MASCOT_PATH).toString("base64");
+
   const body = {
     input: {
       prompt,
-      image: MASCOT_URL,
+      image: `data:image/png;base64,${mascotBase64}`,
       seed,
       output_format: "png",
     },
@@ -67,8 +69,13 @@ async function generateSingle(
   console.log(`    Job ${jobId} queued, polling for result ...`);
   const result = await pollUntilCompleted(jobId);
 
-  const base64 = result.output.output_image_base64;
-  return Buffer.from(base64, "base64");
+  const imageUrl = result.output.result;
+  console.log(`    Downloading result image ...`);
+  const imageRes = await fetch(imageUrl);
+  if (!imageRes.ok) {
+    throw new Error(`Failed to download image: ${imageRes.status}`);
+  }
+  return Buffer.from(await imageRes.arrayBuffer());
 }
 
 export async function generateImages(

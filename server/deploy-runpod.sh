@@ -64,11 +64,8 @@ cmd_push() {
 
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-    info "Building Docker image ..."
-    docker build -t "${RUNPOD_DOCKER_IMAGE}" "${SCRIPT_DIR}"
-
-    info "Pushing to Docker Hub ..."
-    docker push "${RUNPOD_DOCKER_IMAGE}"
+    info "Building Docker image (linux/amd64) ..."
+    docker buildx build --platform linux/amd64 -t "${RUNPOD_DOCKER_IMAGE}" --push "${SCRIPT_DIR}"
 
     info "Done: ${RUNPOD_DOCKER_IMAGE}"
 }
@@ -102,8 +99,6 @@ mutation {
         cloudType: ALL
         volumeInGb: ${VOLUME_GB}
         containerDiskInGb: ${CONTAINER_DISK_GB}
-        minVcpuCount: 4
-        minMemoryInGb: 32
         ports: "8000/http"
         env: [
             { key: "HF_HOME", value: "/runpod-volume/hf-cache" }

@@ -12,8 +12,7 @@ export const config = {
   runpodApiKey: process.env.RUNPOD_API_KEY || "",
 } as const;
 
-export const MASCOT_URL =
-  "https://raw.githubusercontent.com/geeksilva97/kanario/main/mascots/mascot3d.png";
+export const MASCOT_PATH = path.join(PROJECT_ROOT, "mascots", "mascot3d.png");
 
 export const OUTPUT_DIR = path.join(PROJECT_ROOT, "output");
 
