@@ -12,14 +12,15 @@ const { values, positionals } = parseArgs({
   options: {
     hint: { type: "string" },
     model: { type: "string", default: "gemini" },
-    wide: { type: "boolean", default: false },
+    wide: { type: "boolean", default: true },
+    "no-wide": { type: "boolean", default: false },
     help: { type: "boolean", short: "h" },
   },
   allowPositionals: true,
 });
 
 if (values.help || positionals.length === 0) {
-  console.log(`Usage: ./kanario <post-id-or-url> [--model claude|gemini] [--wide] [--hint <text>]
+  console.log(`Usage: ./kanario <post-id-or-url> [--model claude|gemini] [--no-wide] [--hint <text>]
 
 Fetches a WordPress draft, generates thumbnail prompts via an LLM,
 and produces cover images via Qwen Image Edit on RunPod.
@@ -29,14 +30,14 @@ Arguments:
 
 Options:
   --model     LLM for prompt generation: "gemini" (default) or "claude"
-  --wide      Pad mascot to 16:9 canvas for widescreen output (default: square)
+  --no-wide   Disable 16:9 padding, output matches mascot aspect ratio (square)
   --hint      Guide the visual metaphor (e.g. "two models competing side by side")
   -h, --help  Show this help
 
 Examples:
   ./kanario 12487
-  ./kanario 12487 --wide
-  ./kanario 12487 --model claude --wide
+  ./kanario 12487 --no-wide
+  ./kanario 12487 --model claude
   ./kanario 12487 --hint "versus scene, two robots facing off"
   ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"`);
   process.exit(0);
@@ -45,7 +46,7 @@ Examples:
 const postId = parsePostId(positionals[0]);
 const hint = values.hint;
 const modelChoice = values.model as string;
-const wide = values.wide as boolean;
+const wide = values["no-wide"] ? false : (values.wide as boolean);
 
 if (modelChoice !== "claude" && modelChoice !== "gemini") {
   console.error(`Unknown model "${modelChoice}". Choose "claude" or "gemini".`);
