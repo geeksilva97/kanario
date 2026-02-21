@@ -11,6 +11,9 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   runpodApiKey: process.env.RUNPOD_API_KEY || "",
   geminiApiKey: process.env.GEMINI_API_KEY || "",
+  discordToken: process.env.DISCORD_TOKEN || "",
+  discordPublicKey: process.env.DISCORD_PUBLIC_KEY || "",
+  discordApplicationId: process.env.DISCORD_APPLICATION_ID || "",
 } as const;
 
 export const MASCOTS = {

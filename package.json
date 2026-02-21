@@ -7,11 +7,14 @@
     "start": "node --env-file=.env --experimental-strip-types src/index.ts",
     "test": "node --experimental-strip-types --test test/index.test.ts",
     "test:coverage": "node --experimental-strip-types --test --experimental-test-coverage test/index.test.ts",
-    "test:integration": "node --env-file=.env.test --experimental-strip-types --test test/wordpress.integration.test.ts"
+    "test:integration": "node --env-file=.env.test --experimental-strip-types --test test/wordpress.integration.test.ts",
+    "server": "node --env-file=.env --experimental-strip-types src/discord/server.ts",
+    "discord:register": "node --env-file=.env --experimental-strip-types src/discord/register.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@google/genai": "^1.42.0",
+    "fastify": "^5.7.4",
     "sharp": "^0.34.5"
   }
 }

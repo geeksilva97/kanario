@@ -2,6 +2,8 @@
 
 Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via Qwen Image Edit on RunPod.
 
+Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/pick`). Both interfaces use the same underlying workflows.
+
 Given a post ID, the CLI:
 
 1. Fetches the draft from WordPress REST API
@@ -28,6 +30,9 @@ cp .env.example .env  # fill in credentials
 | `GEMINI_API_KEY` | Google Vertex AI API key (default model — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (only needed with `--model claude`) |
 | `RUNPOD_API_KEY` | RunPod API key (from [runpod.io](https://www.runpod.io/) account settings) |
+| `DISCORD_TOKEN` | Discord bot token (only needed for Discord bot) |
+| `DISCORD_PUBLIC_KEY` | Discord application public key (only needed for Discord bot) |
+| `DISCORD_APPLICATION_ID` | Discord application ID (only needed for Discord bot) |
 
 ### WordPress Application Password
 
@@ -98,6 +103,46 @@ output/12345/
 ├── prompt-3a.png
 ├── prompt-3b.png
 └── prompts.json
+```
+
+## Discord Bot
+
+The same generate and pick workflows are available as Discord slash commands, so the team can trigger thumbnail generation and pick images directly from a channel.
+
+### Setup
+
+1. Create a Discord application at [discord.com/developers](https://discord.com/developers/applications)
+2. Create a bot under the application and copy the **Bot Token** → `DISCORD_TOKEN`
+3. Copy the **Application ID** → `DISCORD_APPLICATION_ID`
+4. Copy the **Public Key** → `DISCORD_PUBLIC_KEY`
+5. Add the bot to your server with the `applications.commands` scope
+6. Register slash commands:
+
+```bash
+npm run discord:register
+```
+
+7. Start the server:
+
+```bash
+npm run server
+```
+
+8. Set the **Interactions Endpoint URL** in the Discord developer portal to your server's public URL + `/interactions` (e.g. `https://your-server.com/interactions`)
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `/generate post_id [model] [hint]` | Generate 6 thumbnail images for a WordPress draft |
+| `/pick post_id image` | Upload an image and set it as the post's featured image |
+
+Both commands respond with a deferred message, then edit it with the result once the workflow completes.
+
+### Health check
+
+```
+GET /health → { "status": "ok" }
 ```
 
 ## RunPod Hub API (qwen-image-edit)
@@ -235,4 +280,5 @@ npm test
 - Node.js >= 22 (native fetch, `--experimental-strip-types`, `node:test`)
 - Two LLM SDKs: `@google/genai` (Gemini via Vertex AI), `@anthropic-ai/sdk` (Claude)
 - `sharp` for image processing (padding mascot to widescreen canvas)
+- `fastify` for the Discord bot HTTP server (Ed25519 signature verification via Node built-in `crypto.subtle`)
 - RunPod Hub serverless endpoint for Qwen Image Edit (no custom infra)

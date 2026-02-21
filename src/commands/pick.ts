@@ -1,13 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
-import { config, OUTPUT_DIR } from "../config.ts";
-import {
-  fetchDraft,
-  parsePostId,
-  uploadMedia,
-  setFeaturedImage,
-} from "../wordpress.ts";
+import { OUTPUT_DIR } from "../config.ts";
+import { fetchDraft, parsePostId } from "../wordpress.ts";
+import { pickWorkflow } from "../workflows/pick.ts";
 
 export function resolveImagePath(postId: string, imageArg: string): string {
   if (/^\d+[a-z]$/.test(imageArg)) {
@@ -27,21 +22,9 @@ export async function pick(positionals: string[]) {
   }
 
   const postId = parsePostId(rawPostId);
-
-  // Validate WP credentials
-  if (!config.wpUsername || !config.wpAppPassword) {
-    console.error("Missing WP_USERNAME or WP_APP_PASSWORD environment variables.");
-    process.exit(1);
-  }
-
-  // Resolve and validate image path
   const imagePath = resolveImagePath(postId, imageArg);
-  if (!fs.existsSync(imagePath)) {
-    console.error(`Image not found: ${imagePath}`);
-    process.exit(1);
-  }
 
-  // Fetch post title for confirmation
+  // Fetch post title for confirmation display
   const post = await fetchDraft(postId);
 
   console.log(`\n  Post:  ${post.title}`);
@@ -56,16 +39,14 @@ export async function pick(positionals: string[]) {
     process.exit(0);
   }
 
-  // Upload
-  const filename = path.basename(imagePath);
-  console.log(`\nUploading ${filename} ...`);
-  const mediaId = await uploadMedia(imagePath, filename);
-  console.log(`  Media ID: ${mediaId}`);
-
-  // Set featured image
-  console.log(`Setting featured image on post ${postId} ...`);
-  await setFeaturedImage(postId, mediaId);
-
-  console.log(`\nDone! Featured image set for "${post.title}".`);
-  process.exit(0);
+  try {
+    console.log(`\nUploading ${path.basename(imagePath)} ...`);
+    const result = await pickWorkflow({ postId, imagePath });
+    console.log(`  Media ID: ${result.mediaId}`);
+    console.log(`\nDone! Featured image set for "${post.title}".`);
+    process.exit(0);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
 }
