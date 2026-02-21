@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
-import { config, OUTPUT_DIR } from "./config.ts";
+import { config, OUTPUT_DIR, MASCOTS, type MascotId } from "./config.ts";
 import { fetchDraft, parsePostId } from "./wordpress.ts";
 import { generatePrompts } from "./prompt-generator.ts";
 import { generateImages } from "./image-generator.ts";
@@ -66,9 +66,11 @@ const outputDir = path.join(OUTPUT_DIR, postId);
 const allPaths: string[] = [];
 
 for (const [i, prompt] of result.prompts.entries()) {
-  console.log(`\n  Prompt ${i + 1}: ${prompt.scene}`);
+  const mascotId = (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
+  console.log(`\n  Prompt ${i + 1}: ${prompt.scene} (mascot: ${mascotId})`);
   const paths = await generateImages({
     prompt: prompt.full_prompt,
+    mascotPath: MASCOTS[mascotId],
     outputDir,
     filenamePrefix: `prompt-${i + 1}`,
   });

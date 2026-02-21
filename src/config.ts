@@ -12,7 +12,12 @@ export const config = {
   runpodApiKey: process.env.RUNPOD_API_KEY || "",
 } as const;
 
-export const MASCOT_PATH = path.join(PROJECT_ROOT, "mascots", "mascot3d.png");
+export const MASCOTS = {
+  miner: path.join(PROJECT_ROOT, "mascots", "mascot3d.png"),
+  hat: path.join(PROJECT_ROOT, "mascots", "mascot-hat.png"),
+} as const;
+
+export type MascotId = keyof typeof MASCOTS;
 
 export const OUTPUT_DIR = path.join(PROJECT_ROOT, "output");
 

@@ -1,12 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { config, MASCOT_PATH } from "./config.ts";
+import { config } from "./config.ts";
 
 const RUNPOD_BASE = "https://api.runpod.ai/v2/qwen-image-edit";
 const POLL_INTERVAL_MS = 3_000;
 
 export interface GenerateImageOptions {
   prompt: string;
+  mascotPath: string;
   outputDir: string;
   filenamePrefix: string;
 }
@@ -47,9 +48,10 @@ async function pollUntilCompleted(jobId: string): Promise<any> {
 
 async function generateSingle(
   prompt: string,
+  mascotPath: string,
   seed: number,
 ): Promise<Buffer> {
-  const mascotBase64 = fs.readFileSync(MASCOT_PATH).toString("base64");
+  const mascotBase64 = fs.readFileSync(mascotPath).toString("base64");
 
   const body = {
     input: {
@@ -81,7 +83,7 @@ async function generateSingle(
 export async function generateImages(
   options: GenerateImageOptions,
 ): Promise<string[]> {
-  const { prompt, outputDir, filenamePrefix } = options;
+  const { prompt, mascotPath, outputDir, filenamePrefix } = options;
 
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -99,7 +101,7 @@ export async function generateImages(
 
     console.log(`  Generating ${filename} (seed: ${seeds[i]}) ...`);
 
-    const pngBuffer = await generateSingle(prompt, seeds[i]);
+    const pngBuffer = await generateSingle(prompt, mascotPath, seeds[i]);
 
     fs.writeFileSync(outputPath, pngBuffer);
     console.log(`  Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);

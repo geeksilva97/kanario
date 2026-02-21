@@ -5,6 +5,7 @@ import type { WPPost } from "./wordpress.ts";
 export interface ImagePrompt {
   scene: string;
   variation: string;
+  mascot: string;
   scene_description: string;
   full_prompt: string;
 }
@@ -45,6 +46,15 @@ Pick the best pose/context for each scene:
 | thinking | Problem-solving, trade-offs, evaluations |
 | on a meeting | Discussions, planning, strategy |
 | holding a warning | Security alerts, pitfalls, caveats |
+
+## Mascot characters
+
+There are two mascot characters available. Pick the best one for each scene:
+
+| ID | Description | Best for |
+|---|---|---|
+| miner | Robot with mining helmet, goggles, backpack, yellow buckle — rugged, hands-on look | Building, debugging, deep-dive technical work, infrastructure, DevOps |
+| hat | Robot with a tech hat and glasses — cleaner, intellectual look | Architecture, presentations, thinking, planning, code review, learning |
 
 ## Output rules
 
@@ -88,13 +98,19 @@ export async function generatePrompts(post: WPPost): Promise<PromptResult> {
                     description:
                       "Mascot variation from the table (e.g. 'detective investigating', 'on laptop')",
                   },
+                  mascot: {
+                    type: "string",
+                    enum: ["miner", "hat"],
+                    description:
+                      "Which mascot character to use: 'miner' (helmet, rugged) or 'hat' (glasses, intellectual)",
+                  },
                   scene_description: {
                     type: "string",
                     description:
                       "2-3 short sentences (under 40 words) with camera-relative depth layering. State where the camera is, what's in the foreground, and what's in the background. Use 'a small mascot from the reference image'. No filler or meta-descriptions.",
                   },
                 },
-                required: ["scene", "variation", "scene_description"],
+                required: ["scene", "variation", "mascot", "scene_description"],
               },
               minItems: 2,
               maxItems: 3,
@@ -129,6 +145,7 @@ ${post.content.slice(0, 4000)}`,
     prompts: Array<{
       scene: string;
       variation: string;
+      mascot: string;
       scene_description: string;
     }>;
   };
