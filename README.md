@@ -9,6 +9,8 @@ Given a post ID, the CLI:
 3. Submits all 6 image jobs in parallel (3 prompts x 2 seeds) to Qwen Image Edit on RunPod Hub (~50s total)
 4. Saves everything to `output/<post-id>/`
 
+Once you've picked a favorite, the `pick` subcommand uploads it to WordPress and sets it as the post's featured image.
+
 ## Setup
 
 ```bash
@@ -43,6 +45,8 @@ Your user must have **Editor** or **Administrator** role to access draft posts v
 
 ## Usage
 
+### Generate thumbnails
+
 ```bash
 ./kanario <post-id-or-url> [--model gemini|claude] [--no-wide] [--hint <text>]
 ```
@@ -64,6 +68,23 @@ Examples:
 ./kanario 12487 --model claude
 ./kanario 12487 --hint "versus scene, two robots facing off"
 ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
+```
+
+### Pick & upload featured image
+
+```bash
+./kanario pick <post-id-or-url> <image>
+```
+
+`<image>` accepts a shorthand like `2a` (resolves to `output/<post-id>/prompt-2a.png`) or a full file path.
+
+Shows the post title and image path, then asks for confirmation before uploading.
+
+Examples:
+
+```bash
+./kanario pick 12487 2a
+./kanario pick 12487 /path/to/custom.png
 ```
 
 Output goes to `output/<post-id>/`:

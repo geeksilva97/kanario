@@ -1,8 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
 import { stripHtml, parsePostId } from "../src/wordpress.ts";
-import { PROMPT_TEMPLATE, BACKGROUND_COLORS, config, PROJECT_ROOT } from "../src/config.ts";
+import { PROMPT_TEMPLATE, BACKGROUND_COLORS, config, PROJECT_ROOT, OUTPUT_DIR } from "../src/config.ts";
 import { buildFullPrompt } from "../src/prompt-generator.ts";
+import { resolveImagePath } from "../src/commands/pick.ts";
 
 describe("stripHtml", () => {
   it("removes HTML tags", () => {
@@ -116,6 +118,23 @@ describe("buildFullPrompt", () => {
   it("falls back to white when background ID is unknown", () => {
     const result = buildFullPrompt("A scene", "nonexistent");
     assert.ok(result.includes("pure white"));
+  });
+});
+
+describe("resolveImagePath", () => {
+  it("resolves shorthand to output directory", () => {
+    const result = resolveImagePath("12518", "2a");
+    assert.equal(result, path.join(OUTPUT_DIR, "12518", "prompt-2a.png"));
+  });
+
+  it("returns absolute path as-is", () => {
+    const result = resolveImagePath("12518", "/tmp/custom.png");
+    assert.equal(result, "/tmp/custom.png");
+  });
+
+  it("resolves relative path to absolute", () => {
+    const result = resolveImagePath("12518", "some/image.png");
+    assert.equal(result, path.resolve("some/image.png"));
   });
 });
 
