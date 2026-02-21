@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -38,4 +39,6 @@ export const BACKGROUND_COLORS = {
 
 export type BackgroundId = keyof typeof BACKGROUND_COLORS;
 
-export const PROMPT_TEMPLATE = `Isometric 3D scene, Pixar-style render, [BACKGROUND] background, clean minimal shadows. Wide establishing shot, zoomed out so the entire scene is a small diorama occupying only the center of the frame. [SCENE]. Lock angle and position. The scene is tiny and centered, surrounded by vast empty background on all sides, 16:9 widescreen format.`;
+export const PROMPTS_DIR = path.join(PROJECT_ROOT, "prompts");
+
+export const PROMPT_TEMPLATE = fs.readFileSync(path.join(PROMPTS_DIR, "image-style.md"), "utf-8").trim();
