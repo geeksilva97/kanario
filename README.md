@@ -22,9 +22,23 @@ cp .env.example .env  # fill in credentials
 |---|---|
 | `WP_URL` | WordPress site URL (default: `https://blog.codeminer42.com`) |
 | `WP_USERNAME` | WordPress username |
-| `WP_APP_PASSWORD` | WordPress application password |
+| `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `RUNPOD_QWEN_URL` | RunPod Qwen server URL (e.g. `https://<pod-id>-8000.proxy.runpod.net`) |
+
+### WordPress Application Password
+
+The CLI authenticates with the WordPress REST API using [Application Passwords](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/) (built into WordPress, no plugins needed).
+
+To create one:
+
+1. Log into WordPress admin (`/wp-admin/`)
+2. Go to **Users → Profile**
+3. Scroll to the **Application Passwords** section
+4. Enter a name (e.g. "Kanario") and click **Add New Application Password**
+5. Copy the generated password — it's only shown once
+
+Your user must have **Editor** or **Administrator** role to access draft posts via the REST API.
 
 ## Usage
 
