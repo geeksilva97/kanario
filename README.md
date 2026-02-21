@@ -63,7 +63,12 @@ Image generation uses RunPod Hub's **public serverless endpoint** — no custom 
 
 ### How it works
 
-The workflow is async (submit → poll → download):
+There are two modes:
+
+- **Async** (`/run`) — submit a job, poll `/status/{id}`, download result. This is what we use.
+- **Sync** (`/runsync`) — blocks until the job completes and returns the result in the response. Simpler but has a 90-second timeout, so it can fail on cold starts or slow generations.
+
+Our workflow (async):
 
 1. **Submit a job** — `POST /run` returns a job ID
 2. **Poll for status** — `GET /status/{id}` until `COMPLETED`
@@ -137,6 +142,20 @@ The result is a **CloudFront CDN URL** — fetch it to download the PNG.
   "output": { "status": "failed" }
 }
 ```
+
+#### Sync mode (not used)
+
+`POST /runsync` takes the same request body as `/run` but blocks until the job finishes:
+
+```json
+{
+  "id": "job-id",
+  "status": "COMPLETED",
+  "output": { "cost": 0.02, "result": "https://...cloudfront.net/output/{uuid}.png" }
+}
+```
+
+Simpler (no polling loop), but has a **90-second timeout**. If the worker cold-starts or the generation is slow, the request will time out. We use `/run` + polling to avoid this.
 
 ### Gotchas
 
