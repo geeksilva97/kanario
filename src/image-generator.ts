@@ -19,6 +19,7 @@ export interface SingleImageOptions {
   outputDir: string;
   filename: string;
   seed: number;
+  wide?: boolean;
 }
 
 async function runpodRequest(endpoint: string, init?: RequestInit) {
@@ -76,12 +77,18 @@ async function padToWidescreen(mascotPath: string): Promise<string> {
   return padded.toString("base64");
 }
 
+async function encodeMascot(mascotPath: string, wide: boolean): Promise<string> {
+  if (wide) return padToWidescreen(mascotPath);
+  return fs.readFileSync(mascotPath).toString("base64");
+}
+
 async function generateSingle(
   prompt: string,
   mascotPath: string,
   seed: number,
+  wide: boolean,
 ): Promise<Buffer> {
-  const mascotBase64 = await padToWidescreen(mascotPath);
+  const mascotBase64 = await encodeMascot(mascotPath, wide);
 
   const body = {
     input: {
@@ -113,13 +120,13 @@ async function generateSingle(
 export async function generateSingleImage(
   options: SingleImageOptions,
 ): Promise<string> {
-  const { prompt, mascotPath, outputDir, filename, seed } = options;
+  const { prompt, mascotPath, outputDir, filename, seed, wide = false } = options;
 
   fs.mkdirSync(outputDir, { recursive: true });
 
   console.log(`  Generating ${filename} (seed: ${seed}) ...`);
 
-  const pngBuffer = await generateSingle(prompt, mascotPath, seed);
+  const pngBuffer = await generateSingle(prompt, mascotPath, seed, wide);
 
   const outputPath = path.join(outputDir, filename);
   fs.writeFileSync(outputPath, pngBuffer);

@@ -44,7 +44,7 @@ Your user must have **Editor** or **Administrator** role to access draft posts v
 ## Usage
 
 ```bash
-./kanario <post-id-or-url> [--model gemini|claude] [--hint <text>]
+./kanario <post-id-or-url> [--model gemini|claude] [--wide] [--hint <text>]
 ```
 
 Options:
@@ -52,6 +52,7 @@ Options:
 | Flag | Description |
 |---|---|
 | `--model` | LLM for prompt generation: `gemini` (default) or `claude` |
+| `--wide` | Pad mascot to 16:9 canvas for widescreen output (default: square) |
 | `--hint` | Guide the visual metaphor (e.g. `"two models competing side by side"`) |
 | `-h, --help` | Show help |
 
@@ -59,7 +60,8 @@ Examples:
 
 ```bash
 ./kanario 12487
-./kanario 12487 --model claude
+./kanario 12487 --wide
+./kanario 12487 --model claude --wide
 ./kanario 12487 --hint "versus scene, two robots facing off"
 ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
 ```
