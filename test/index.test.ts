@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { stripHtml, parsePostId } from "../src/wordpress.ts";
 import { PROMPT_TEMPLATE, BACKGROUND_COLORS, config, PROJECT_ROOT } from "../src/config.ts";
+import { buildFullPrompt } from "../src/prompt-generator.ts";
 
 describe("stripHtml", () => {
   it("removes HTML tags", () => {
@@ -89,6 +90,32 @@ describe("parsePostId", () => {
       parsePostId("https://example.com/some-page"),
       "https://example.com/some-page",
     );
+  });
+});
+
+describe("buildFullPrompt", () => {
+  it("interpolates scene and background into the template", () => {
+    const result = buildFullPrompt(
+      "A small mascot sits at a tiny desk with a glowing laptop",
+      "cream",
+    );
+    assert.ok(result.startsWith("Isometric 3D"));
+    assert.ok(result.includes("A small mascot sits at a tiny desk with a glowing laptop"));
+    assert.ok(result.includes("soft warm yellow"));
+    assert.ok(!result.includes("[SCENE]"));
+    assert.ok(!result.includes("[BACKGROUND]"));
+  });
+
+  it("strips trailing period from scene description", () => {
+    const result = buildFullPrompt("Mascot next to a server rack.", "navy");
+    assert.ok(result.includes("Mascot next to a server rack."));
+    // The period before the template's own period should be stripped
+    assert.ok(!result.includes("rack.."));
+  });
+
+  it("falls back to white when background ID is unknown", () => {
+    const result = buildFullPrompt("A scene", "nonexistent");
+    assert.ok(result.includes("pure white"));
   });
 });
 

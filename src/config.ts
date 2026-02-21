@@ -10,6 +10,7 @@ export const config = {
   wpAppPassword: process.env.WP_APP_PASSWORD || "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   runpodApiKey: process.env.RUNPOD_API_KEY || "",
+  geminiApiKey: process.env.GEMINI_API_KEY || "",
 } as const;
 
 export const MASCOTS = {

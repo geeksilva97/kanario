@@ -14,7 +14,7 @@ export interface PromptResult {
   prompts: ImagePrompt[];
 }
 
-const SYSTEM_PROMPT = `You are a creative director for a tech blog. Given a blog post, you design miniature diorama scenes for blog cover thumbnails.
+export const SYSTEM_PROMPT = `You are a creative director for a tech blog. Given a blog post, you design miniature diorama scenes for blog cover thumbnails.
 
 Translate the post's core idea into a tiny physical scene that tells the story at a glance. Just place the mascot in a scene — the scene itself communicates the message.
 
@@ -68,7 +68,7 @@ If the user message includes "Creative direction from the author", that is the *
 - Simple props, no clutter
 - scene_description will be interpolated into a locked style template — just describe the diorama, nothing else`;
 
-function buildFullPrompt(sceneDescription: string, backgroundId: string): string {
+export function buildFullPrompt(sceneDescription: string, backgroundId: string): string {
   const scene = sceneDescription.replace(/\.$/, "");
   const bg = (backgroundId in BACKGROUND_COLORS
     ? BACKGROUND_COLORS[backgroundId as BackgroundId]

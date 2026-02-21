@@ -1,11 +1,11 @@
 # Kanario
 
-Blog thumbnail agent. Reads a WordPress draft, generates image prompts via Claude, then produces cover images via Qwen Image Edit on RunPod.
+Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via Qwen Image Edit on RunPod.
 
 Given a post ID, the CLI:
 
 1. Fetches the draft from WordPress REST API
-2. Sends the content to Claude, which generates 2-3 scene descriptions
+2. Sends the content to an LLM (Gemini by default, or Claude), which generates 2-3 scene descriptions
 3. Sends each prompt to Qwen Image Edit (RunPod Hub public endpoint) with a mascot reference image (2 images per prompt → 4-6 options total)
 4. Saves everything to `output/<post-id>/`
 
@@ -23,7 +23,8 @@ cp .env.example .env  # fill in credentials
 | `WP_URL` | WordPress site URL (default: `https://blog.codeminer42.com`) |
 | `WP_USERNAME` | WordPress username |
 | `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `GEMINI_API_KEY` | Google Vertex AI API key (default model — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (only needed with `--model claude`) |
 | `RUNPOD_API_KEY` | RunPod API key (from [runpod.io](https://www.runpod.io/) account settings) |
 
 ### WordPress Application Password
@@ -43,8 +44,16 @@ Your user must have **Editor** or **Administrator** role to access draft posts v
 ## Usage
 
 ```bash
-node --env-file=.env --experimental-strip-types src/index.ts <post-id> [--wp-url <url>]
+node --env-file=.env --experimental-strip-types src/index.ts <post-id> [--model gemini|claude] [--hint <text>]
 ```
+
+Options:
+
+| Flag | Description |
+|---|---|
+| `--model` | LLM for prompt generation: `gemini` (default) or `claude` |
+| `--hint` | Guide the visual metaphor (e.g. `"two models competing side by side"`) |
+| `-h, --help` | Show help |
 
 Output goes to `output/<post-id>/`:
 
@@ -190,5 +199,5 @@ npm test
 ## Stack
 
 - Node.js >= 22 (native fetch, `--experimental-strip-types`, `node:test`)
-- Single external dependency: `@anthropic-ai/sdk`
+- Two LLM SDKs: `@google/genai` (Gemini via Vertex AI), `@anthropic-ai/sdk` (Claude)
 - RunPod Hub serverless endpoint for Qwen Image Edit (no custom infra)

@@ -3,33 +3,37 @@ import fs from "node:fs";
 import path from "node:path";
 import { config, OUTPUT_DIR, MASCOTS, type MascotId } from "./config.ts";
 import { fetchDraft, parsePostId } from "./wordpress.ts";
-import { generatePrompts } from "./prompt-generator.ts";
+import { generatePrompts as claudeGeneratePrompts } from "./prompt-generator.ts";
+import { generatePrompts as geminiGeneratePrompts } from "./gemini-generator.ts";
 import { generateImages } from "./image-generator.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     hint: { type: "string" },
+    model: { type: "string", default: "gemini" },
     help: { type: "boolean", short: "h" },
   },
   allowPositionals: true,
 });
 
 if (values.help || positionals.length === 0) {
-  console.log(`Usage: ./kanario <post-id-or-url> [--hint <text>]
+  console.log(`Usage: ./kanario <post-id-or-url> [--model claude|gemini] [--hint <text>]
 
-Fetches a WordPress draft, generates thumbnail prompts via Claude,
+Fetches a WordPress draft, generates thumbnail prompts via an LLM,
 and produces cover images via Qwen Image Edit on RunPod.
 
 Arguments:
   post-id-or-url  WordPress post ID or wp-admin edit URL
 
 Options:
+  --model     LLM for prompt generation: "gemini" (default) or "claude"
   --hint      Guide the visual metaphor (e.g. "two models competing side by side")
   -h, --help  Show this help
 
 Examples:
   ./kanario 12487
+  ./kanario 12487 --model gemini
   ./kanario 12487 --hint "versus scene, two robots facing off"
   ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"`);
   process.exit(0);
@@ -37,12 +41,21 @@ Examples:
 
 const postId = parsePostId(positionals[0]);
 const hint = values.hint;
+const modelChoice = values.model as string;
+
+if (modelChoice !== "claude" && modelChoice !== "gemini") {
+  console.error(`Unknown model "${modelChoice}". Choose "claude" or "gemini".`);
+  process.exit(1);
+}
+
+const generatePrompts = modelChoice === "gemini" ? geminiGeneratePrompts : claudeGeneratePrompts;
 
 // Validate required config
 const missing: string[] = [];
 if (!config.wpUsername) missing.push("WP_USERNAME");
 if (!config.wpAppPassword) missing.push("WP_APP_PASSWORD");
-if (!config.anthropicApiKey) missing.push("ANTHROPIC_API_KEY");
+if (modelChoice === "claude" && !config.anthropicApiKey) missing.push("ANTHROPIC_API_KEY");
+if (modelChoice === "gemini" && !config.geminiApiKey) missing.push("GEMINI_API_KEY");
 if (!config.runpodApiKey) missing.push("RUNPOD_API_KEY");
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
@@ -56,8 +69,9 @@ const post = await fetchDraft(postId);
 console.log(`  Title: ${post.title}`);
 console.log(`  Content length: ${post.content.length} chars`);
 
-// Step 2: Generate image prompts via Claude
-console.log(`\n[2/4] Generating image prompts via Claude ...`);
+// Step 2: Generate image prompts via LLM
+const modelLabel = modelChoice === "gemini" ? "Gemini" : "Claude";
+console.log(`\n[2/4] Generating image prompts via ${modelLabel} ...`);
 if (hint) console.log(`  Hint: "${hint}"`);
 const result = await generatePrompts(post, hint);
 console.log(`  Generated ${result.prompts.length} prompts:`);

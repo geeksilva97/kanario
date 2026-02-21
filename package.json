@@ -10,6 +10,7 @@
     "test:integration": "node --env-file=.env.test --experimental-strip-types --test test/wordpress.integration.test.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0"
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@google/genai": "^1.42.0"
   }
 }
