@@ -3,7 +3,7 @@ import { config } from "../config.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 import { resolveImagePath } from "../commands/pick.ts";
-import { fetchDraft, parsePostId } from "../wordpress.ts";
+import { fetchDraft, resolvePostId } from "../wordpress.ts";
 
 // Discord interaction response types
 const DEFERRED_CHANNEL_MESSAGE = 5;
@@ -130,7 +130,7 @@ async function handleGenerate(interaction: any) {
   const hint = getOptionValue(interaction, "hint");
 
   try {
-    const postId = parsePostId(rawPostId);
+    const postId = await resolvePostId(rawPostId);
     const progressMessages: string[] = [];
 
     const result = await generateWorkflow(
@@ -162,7 +162,7 @@ async function handlePick(interaction: any) {
   const imageArg = getOptionValue(interaction, "image") || "";
 
   try {
-    const postId = parsePostId(rawPostId);
+    const postId = await resolvePostId(rawPostId);
     const imagePath = resolveImagePath(postId, imageArg);
     const post = await fetchDraft(postId);
 

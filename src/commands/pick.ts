@@ -1,7 +1,7 @@
 import path from "node:path";
 import readline from "node:readline/promises";
 import { OUTPUT_DIR } from "../config.ts";
-import { fetchDraft, parsePostId } from "../wordpress.ts";
+import { fetchDraft, resolvePostId } from "../wordpress.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 
 export function resolveImagePath(postId: string, imageArg: string): string {
@@ -21,7 +21,7 @@ export async function pick(positionals: string[]) {
     process.exit(1);
   }
 
-  const postId = parsePostId(rawPostId);
+  const postId = await resolvePostId(rawPostId);
   const imagePath = resolveImagePath(postId, imageArg);
 
   // Fetch post title for confirmation display

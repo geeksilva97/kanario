@@ -4,7 +4,7 @@ Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LL
 
 Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/pick`). Both interfaces use the same underlying workflows.
 
-Given a post ID, the CLI:
+Given a post ID (or URL), the CLI:
 
 1. Fetches the draft from WordPress REST API
 2. Sends the content to an LLM (Gemini by default, or Claude), which generates 3 scene descriptions
@@ -73,6 +73,7 @@ Examples:
 ./kanario 12487 --model claude
 ./kanario 12487 --hint "versus scene, two robots facing off"
 ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
+./kanario "https://blog.codeminer42.com/some-post-slug/"
 ```
 
 ### Pick & upload featured image
@@ -134,8 +135,8 @@ npm run server
 
 | Command | Description |
 |---|---|
-| `/generate post_id [model] [hint]` | Generate 6 thumbnail images for a WordPress draft |
-| `/pick post_id image` | Upload an image and set it as the post's featured image |
+| `/generate post_id [model] [hint]` | Generate 6 thumbnail images for a WordPress post (accepts ID, wp-admin URL, or published URL) |
+| `/pick post_id image` | Upload an image and set it as the post's featured image (accepts ID, wp-admin URL, or published URL) |
 
 Both commands respond with a deferred message, then edit it with the result once the workflow completes.
 

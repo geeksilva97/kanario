@@ -31,6 +31,52 @@ export function parsePostId(input: string): string {
   return input;
 }
 
+async function fetchPostIdBySlug(slug: string): Promise<string> {
+  const url = `${config.wpUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`;
+  const auth = Buffer.from(
+    `${config.wpUsername}:${config.wpAppPassword}`,
+  ).toString("base64");
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Basic ${auth}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to look up slug "${slug}": ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error(`No post found with slug "${slug}"`);
+  }
+
+  return String(data[0].id);
+}
+
+export async function resolvePostId(input: string): Promise<string> {
+  const parsed = parsePostId(input);
+  if (/^\d+$/.test(parsed)) return parsed;
+
+  try {
+    const url = new URL(parsed);
+    const slug = url.pathname.replace(/^\/|\/$/g, "");
+    if (!slug) {
+      throw new Error("URL has no path to extract slug from");
+    }
+    return await fetchPostIdBySlug(slug);
+  } catch (err) {
+    if (err instanceof TypeError) {
+      // new URL() failed — not a valid URL
+      throw new Error(`Cannot resolve post from input: ${input}`);
+    }
+    throw err;
+  }
+}
+
 export async function fetchDraft(postId: string): Promise<WPPost> {
   const baseUrl = config.wpUrl;
   const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;

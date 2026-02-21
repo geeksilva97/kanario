@@ -1,11 +1,11 @@
-import { parsePostId } from "../wordpress.ts";
+import { resolvePostId } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 
 export async function generate(
   positionals: string[],
   values: { hint?: string; model?: string; wide?: boolean; "no-wide"?: boolean },
 ) {
-  const postId = parsePostId(positionals[0]);
+  const postId = await resolvePostId(positionals[0]);
   const model = values.model as string;
   const wide = values["no-wide"] ? false : (values.wide as boolean);
   const hint = values.hint;
