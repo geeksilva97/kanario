@@ -5,8 +5,8 @@ Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LL
 Given a post ID, the CLI:
 
 1. Fetches the draft from WordPress REST API
-2. Sends the content to an LLM (Gemini by default, or Claude), which generates 2-3 scene descriptions
-3. Sends each prompt to Qwen Image Edit (RunPod Hub public endpoint) with a mascot reference image (2 images per prompt → 4-6 options total)
+2. Sends the content to an LLM (Gemini by default, or Claude), which generates 3 scene descriptions
+3. Submits all 6 image jobs in parallel (3 prompts x 2 seeds) to Qwen Image Edit on RunPod Hub (~50s total)
 4. Saves everything to `output/<post-id>/`
 
 ## Setup
@@ -44,7 +44,7 @@ Your user must have **Editor** or **Administrator** role to access draft posts v
 ## Usage
 
 ```bash
-node --env-file=.env --experimental-strip-types src/index.ts <post-id> [--model gemini|claude] [--hint <text>]
+./kanario <post-id-or-url> [--model gemini|claude] [--hint <text>]
 ```
 
 Options:
@@ -55,6 +55,15 @@ Options:
 | `--hint` | Guide the visual metaphor (e.g. `"two models competing side by side"`) |
 | `-h, --help` | Show help |
 
+Examples:
+
+```bash
+./kanario 12487
+./kanario 12487 --model claude
+./kanario 12487 --hint "versus scene, two robots facing off"
+./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
+```
+
 Output goes to `output/<post-id>/`:
 
 ```
@@ -63,6 +72,8 @@ output/12345/
 ├── prompt-1b.png
 ├── prompt-2a.png
 ├── prompt-2b.png
+├── prompt-3a.png
+├── prompt-3b.png
 └── prompts.json
 ```
 

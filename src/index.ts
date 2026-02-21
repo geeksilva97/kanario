@@ -5,7 +5,7 @@ import { config, OUTPUT_DIR, MASCOTS, type MascotId } from "./config.ts";
 import { fetchDraft, parsePostId } from "./wordpress.ts";
 import { generatePrompts as claudeGeneratePrompts } from "./prompt-generator.ts";
 import { generatePrompts as geminiGeneratePrompts } from "./gemini-generator.ts";
-import { generateImages } from "./image-generator.ts";
+import { generateSingleImage } from "./image-generator.ts";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -82,19 +82,28 @@ for (const [i, p] of result.prompts.entries()) {
 // Step 3: Generate images via Qwen on RunPod
 console.log(`\n[3/4] Generating images via Qwen Image Edit ...`);
 const outputDir = path.join(OUTPUT_DIR, postId);
-const allPaths: string[] = [];
 
-for (const [i, prompt] of result.prompts.entries()) {
+const suffixes = ["a", "b"];
+const jobs = result.prompts.flatMap((prompt, i) => {
   const mascotId = (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
-  console.log(`\n  Prompt ${i + 1}: ${prompt.scene} (mascot: ${mascotId}, bg: ${prompt.background})`);
-  const paths = await generateImages({
+  return suffixes.map((suffix) => ({
     prompt: prompt.full_prompt,
     mascotPath: MASCOTS[mascotId],
     outputDir,
-    filenamePrefix: `prompt-${i + 1}`,
-  });
-  allPaths.push(...paths);
+    filename: `prompt-${i + 1}${suffix}.png`,
+    seed: Math.floor(Math.random() * 2 ** 32),
+    label: `Prompt ${i + 1}${suffix}: ${prompt.scene} (mascot: ${mascotId})`,
+  }));
+});
+
+for (const job of jobs) {
+  console.log(`  ${job.label}`);
 }
+
+console.log(`\n  Submitting ${jobs.length} jobs in parallel ...`);
+const allPaths = await Promise.all(
+  jobs.map(({ label, ...opts }) => generateSingleImage(opts)),
+);
 
 // Step 4: Save prompts.json
 console.log(`\n[4/4] Saving metadata ...`);
@@ -108,3 +117,4 @@ fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
 console.log(`  Saved ${metadataPath}`);
 
 console.log(`\nDone! Generated ${allPaths.length} images in ${outputDir}`);
+process.exit(0);

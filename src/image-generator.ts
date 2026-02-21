@@ -12,6 +12,14 @@ export interface GenerateImageOptions {
   filenamePrefix: string;
 }
 
+export interface SingleImageOptions {
+  prompt: string;
+  mascotPath: string;
+  outputDir: string;
+  filename: string;
+  seed: number;
+}
+
 async function runpodRequest(endpoint: string, init?: RequestInit) {
   const res = await fetch(`${RUNPOD_BASE}${endpoint}`, {
     ...init,
@@ -80,12 +88,28 @@ async function generateSingle(
   return Buffer.from(await imageRes.arrayBuffer());
 }
 
+export async function generateSingleImage(
+  options: SingleImageOptions,
+): Promise<string> {
+  const { prompt, mascotPath, outputDir, filename, seed } = options;
+
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  console.log(`  Generating ${filename} (seed: ${seed}) ...`);
+
+  const pngBuffer = await generateSingle(prompt, mascotPath, seed);
+
+  const outputPath = path.join(outputDir, filename);
+  fs.writeFileSync(outputPath, pngBuffer);
+  console.log(`  Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);
+
+  return outputPath;
+}
+
 export async function generateImages(
   options: GenerateImageOptions,
 ): Promise<string[]> {
   const { prompt, mascotPath, outputDir, filenamePrefix } = options;
-
-  fs.mkdirSync(outputDir, { recursive: true });
 
   const seeds = [
     Math.floor(Math.random() * 2 ** 32),
@@ -93,21 +117,18 @@ export async function generateImages(
   ];
 
   const suffixes = ["a", "b"];
-  const savedPaths: string[] = [];
 
-  for (let i = 0; i < 2; i++) {
-    const filename = `${filenamePrefix}${suffixes[i]}.png`;
-    const outputPath = path.join(outputDir, filename);
+  const paths = await Promise.all(
+    suffixes.map((suffix, i) =>
+      generateSingleImage({
+        prompt,
+        mascotPath,
+        outputDir,
+        filename: `${filenamePrefix}${suffix}.png`,
+        seed: seeds[i],
+      }),
+    ),
+  );
 
-    console.log(`  Generating ${filename} (seed: ${seeds[i]}) ...`);
-
-    const pngBuffer = await generateSingle(prompt, mascotPath, seeds[i]);
-
-    fs.writeFileSync(outputPath, pngBuffer);
-    console.log(`  Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);
-
-    savedPaths.push(outputPath);
-  }
-
-  return savedPaths;
+  return paths;
 }
