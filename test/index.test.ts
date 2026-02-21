@@ -98,16 +98,16 @@ describe("prompt structure validation", () => {
     const result = {
       prompts: [
         {
-          scene: "debugging with magnifying glass",
-          variation: "detective investigating",
+          scene: "mascot and robot at desk",
+          mascot: "miner",
           scene_description: sceneDescription,
           full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", sceneDescription),
         },
         {
-          scene: "coding at a desk",
-          variation: "on laptop",
-          scene_description: "A small mascot from the reference image types on a laptop placed in the midground, with floating code snippets in the background",
-          full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", "A small mascot from the reference image types on a laptop placed in the midground, with floating code snippets in the background"),
+          scene: "mascot next to server rack",
+          mascot: "hat",
+          scene_description: "A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background",
+          full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", "A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background"),
         },
       ],
     };
@@ -117,7 +117,7 @@ describe("prompt structure validation", () => {
 
     for (const p of result.prompts) {
       assert.ok(typeof p.scene === "string" && p.scene.length > 0);
-      assert.ok(typeof p.variation === "string" && p.variation.length > 0);
+      assert.ok(typeof p.mascot === "string" && (p.mascot === "miner" || p.mascot === "hat"));
       assert.ok(typeof p.scene_description === "string" && p.scene_description.length > 0);
       assert.ok(typeof p.full_prompt === "string");
       assert.ok(p.full_prompt.startsWith("Isometric 3D"));

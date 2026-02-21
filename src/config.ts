@@ -21,4 +21,4 @@ export type MascotId = keyof typeof MASCOTS;
 
 export const OUTPUT_DIR = path.join(PROJECT_ROOT, "output");
 
-export const PROMPT_TEMPLATE = `Isometric 3D scene, Pixar-style render, pure white background, clean minimal shadows. Wide establishing shot, zoomed out to show the full scene from a distance. [SCENE]. Lock angle and position. Generous empty space surrounding all elements, centered composition, 16:9 widescreen format.`;
+export const PROMPT_TEMPLATE = `Isometric 3D scene, Pixar-style render, pure white background, clean minimal shadows. Wide establishing shot, zoomed out so the entire scene is a small diorama occupying only the center of the frame. [SCENE]. Lock angle and position. The scene is tiny and centered, surrounded by vast empty background on all sides, 16:9 widescreen format.`;
