@@ -67,7 +67,7 @@ const allPaths: string[] = [];
 
 for (const [i, prompt] of result.prompts.entries()) {
   const mascotId = (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
-  console.log(`\n  Prompt ${i + 1}: ${prompt.scene} (mascot: ${mascotId})`);
+  console.log(`\n  Prompt ${i + 1}: ${prompt.scene} (mascot: ${mascotId}, bg: ${prompt.background})`);
   const paths = await generateImages({
     prompt: prompt.full_prompt,
     mascotPath: MASCOTS[mascotId],

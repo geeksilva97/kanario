@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { config, PROMPT_TEMPLATE } from "./config.ts";
+import { config, PROMPT_TEMPLATE, BACKGROUND_COLORS, type BackgroundId } from "./config.ts";
 import type { WPPost } from "./wordpress.ts";
 
 export interface ImagePrompt {
   scene: string;
   mascot: string;
+  background: string;
   scene_description: string;
   full_prompt: string;
 }
@@ -50,6 +51,21 @@ Bad:
 | miner | Mining helmet, goggles, backpack — rugged look | Building, debugging, infrastructure, DevOps, hands-on work |
 | hat | Tech hat and glasses — intellectual look | Architecture, planning, code review, learning, thinking |
 
+## Background colors
+
+Pick a background that sets the mood. Light colors feel friendly and open, dark colors feel dramatic and serious. The mascot is white/gray so both work well for contrast.
+
+| ID | Color | Mood |
+|---|---|---|
+| white | Pure white | Clean, neutral, default |
+| cream | Soft warm yellow | Friendly, approachable, warm |
+| mint | Soft mint green | Fresh, growth, success |
+| sky | Soft sky blue | Calm, trust, technology |
+| slate | Dark charcoal | Serious, dramatic, premium |
+| forest | Deep forest green | Depth, maturity, stability |
+| navy | Deep navy blue | Professional, trust, security |
+| plum | Deep plum purple | Creative, bold, unique |
+
 ## Output rules
 
 - Generate exactly 2-3 scenes
@@ -57,9 +73,13 @@ Bad:
 - Simple props, no clutter
 - scene_description will be interpolated into a locked style template — just describe the diorama, nothing else`;
 
-function buildFullPrompt(sceneDescription: string): string {
+function buildFullPrompt(sceneDescription: string, backgroundId: string): string {
   const scene = sceneDescription.replace(/\.$/, "");
-  return PROMPT_TEMPLATE.replace("[SCENE]", scene);
+  const bg = (backgroundId in BACKGROUND_COLORS
+    ? BACKGROUND_COLORS[backgroundId as BackgroundId]
+    : BACKGROUND_COLORS.white
+  ).prompt;
+  return PROMPT_TEMPLATE.replace("[SCENE]", scene).replace("[BACKGROUND]", bg);
 }
 
 export async function generatePrompts(post: WPPost): Promise<PromptResult> {
@@ -93,13 +113,19 @@ export async function generatePrompts(post: WPPost): Promise<PromptResult> {
                     description:
                       "Which mascot to use: 'miner' (rugged) or 'hat' (intellectual)",
                   },
+                  background: {
+                    type: "string",
+                    enum: ["white", "cream", "mint", "sky", "slate", "forest", "navy", "plum"],
+                    description:
+                      "Background color that sets the mood for the scene",
+                  },
                   scene_description: {
                     type: "string",
                     description:
                       "2-3 sentences (under 40 words). Place the mascot and props in a scene with camera-relative depth. Use 'a small mascot from the reference image'. Don't prescribe poses.",
                   },
                 },
-                required: ["scene", "mascot", "scene_description"],
+                required: ["scene", "mascot", "background", "scene_description"],
               },
               minItems: 2,
               maxItems: 3,
@@ -134,6 +160,7 @@ ${post.content.slice(0, 4000)}`,
     prompts: Array<{
       scene: string;
       mascot: string;
+      background: string;
       scene_description: string;
     }>;
   };
@@ -141,7 +168,7 @@ ${post.content.slice(0, 4000)}`,
   return {
     prompts: raw.prompts.map((p) => ({
       ...p,
-      full_prompt: buildFullPrompt(p.scene_description),
+      full_prompt: buildFullPrompt(p.scene_description, p.background),
     })),
   };
 }

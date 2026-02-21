@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { stripHtml, parsePostId } from "../src/wordpress.ts";
-import { PROMPT_TEMPLATE, config, PROJECT_ROOT } from "../src/config.ts";
+import { PROMPT_TEMPLATE, BACKGROUND_COLORS, config, PROJECT_ROOT } from "../src/config.ts";
 
 describe("stripHtml", () => {
   it("removes HTML tags", () => {
@@ -48,8 +48,8 @@ describe("PROMPT_TEMPLATE", () => {
     assert.ok(PROMPT_TEMPLATE.startsWith("Isometric 3D"));
   });
 
-  it("mentions white background", () => {
-    assert.ok(PROMPT_TEMPLATE.includes("pure white background"));
+  it("has [BACKGROUND] placeholder", () => {
+    assert.ok(PROMPT_TEMPLATE.includes("[BACKGROUND]"));
   });
 
   it("includes Lock angle and position trick", () => {
@@ -95,19 +95,24 @@ describe("parsePostId", () => {
 describe("prompt structure validation", () => {
   it("validates a correct prompt result", () => {
     const sceneDescription = "A small mascot from the reference image sits at a desk in the foreground, facing a laptop screen with code visible on it";
+    const buildPrompt = (scene: string, bg: string) =>
+      PROMPT_TEMPLATE.replace("[SCENE]", scene).replace("[BACKGROUND]", bg);
+
     const result = {
       prompts: [
         {
           scene: "mascot and robot at desk",
           mascot: "miner",
+          background: "cream",
           scene_description: sceneDescription,
-          full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", sceneDescription),
+          full_prompt: buildPrompt(sceneDescription, "soft warm yellow"),
         },
         {
           scene: "mascot next to server rack",
           mascot: "hat",
+          background: "navy",
           scene_description: "A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background",
-          full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", "A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background"),
+          full_prompt: buildPrompt("A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background", "deep navy blue"),
         },
       ],
     };
@@ -118,11 +123,13 @@ describe("prompt structure validation", () => {
     for (const p of result.prompts) {
       assert.ok(typeof p.scene === "string" && p.scene.length > 0);
       assert.ok(typeof p.mascot === "string" && (p.mascot === "miner" || p.mascot === "hat"));
+      assert.ok(typeof p.background === "string" && p.background in BACKGROUND_COLORS);
       assert.ok(typeof p.scene_description === "string" && p.scene_description.length > 0);
       assert.ok(typeof p.full_prompt === "string");
       assert.ok(p.full_prompt.startsWith("Isometric 3D"));
       assert.ok(p.full_prompt.includes("Lock angle and position"));
       assert.ok(!p.full_prompt.includes("[SCENE]"));
+      assert.ok(!p.full_prompt.includes("[BACKGROUND]"));
     }
   });
 
