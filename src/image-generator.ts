@@ -1,71 +1,80 @@
 import fs from "node:fs";
 import path from "node:path";
-import { config } from "./config.ts";
+import { config, MASCOT_URL } from "./config.ts";
+
+const RUNPOD_BASE = "https://api.runpod.ai/v2/qwen-image-edit";
+const POLL_INTERVAL_MS = 3_000;
 
 export interface GenerateImageOptions {
   prompt: string;
-  mascot1Path: string;
-  mascot2Path: string;
   outputDir: string;
   filenamePrefix: string;
-  width?: number;
-  height?: number;
+}
+
+async function runpodRequest(endpoint: string, init?: RequestInit) {
+  const res = await fetch(`${RUNPOD_BASE}${endpoint}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${config.runpodApiKey}`,
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`RunPod API error ${res.status}: ${text}`);
+  }
+
+  return res.json();
+}
+
+async function pollUntilCompleted(jobId: string): Promise<any> {
+  while (true) {
+    const status = await runpodRequest(`/status/${jobId}`);
+
+    if (status.status === "COMPLETED") {
+      return status;
+    }
+
+    if (status.status === "FAILED") {
+      throw new Error(`RunPod job ${jobId} failed: ${JSON.stringify(status)}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
 }
 
 async function generateSingle(
   prompt: string,
-  mascot1Path: string,
-  mascot2Path: string,
   seed: number,
-  width: number,
-  height: number,
 ): Promise<Buffer> {
-  const mascot1 = fs.readFileSync(mascot1Path);
-  const mascot2 = fs.readFileSync(mascot2Path);
+  const body = {
+    input: {
+      prompt,
+      image: MASCOT_URL,
+      seed,
+      output_format: "png",
+    },
+  };
 
-  const formData = new FormData();
-  formData.append("prompt", prompt);
-  formData.append(
-    "reference_image_1",
-    new Blob([mascot1], { type: "image/png" }),
-    "mascot-1.png",
-  );
-  formData.append(
-    "reference_image_2",
-    new Blob([mascot2], { type: "image/png" }),
-    "mascot-2.png",
-  );
-  formData.append("seed", String(seed));
-  formData.append("width", String(width));
-  formData.append("height", String(height));
-
-  const url = `${config.runpodQwenUrl}/generate`;
-  const response = await fetch(url, {
+  console.log(`    Submitting job to RunPod Hub ...`);
+  const { id: jobId } = await runpodRequest("/run", {
     method: "POST",
-    body: formData,
+    body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Qwen server error ${response.status}: ${text}`);
-  }
+  console.log(`    Job ${jobId} queued, polling for result ...`);
+  const result = await pollUntilCompleted(jobId);
 
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+  const base64 = result.output.output_image_base64;
+  return Buffer.from(base64, "base64");
 }
 
 export async function generateImages(
   options: GenerateImageOptions,
 ): Promise<string[]> {
-  const {
-    prompt,
-    mascot1Path,
-    mascot2Path,
-    outputDir,
-    filenamePrefix,
-    width = 1280,
-    height = 720,
-  } = options;
+  const { prompt, outputDir, filenamePrefix } = options;
 
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -83,14 +92,7 @@ export async function generateImages(
 
     console.log(`  Generating ${filename} (seed: ${seeds[i]}) ...`);
 
-    const pngBuffer = await generateSingle(
-      prompt,
-      mascot1Path,
-      mascot2Path,
-      seeds[i],
-      width,
-      height,
-    );
+    const pngBuffer = await generateSingle(prompt, seeds[i]);
 
     fs.writeFileSync(outputPath, pngBuffer);
     console.log(`  Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);

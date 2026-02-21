@@ -9,13 +9,11 @@ export const config = {
   wpUsername: process.env.WP_USERNAME || "",
   wpAppPassword: process.env.WP_APP_PASSWORD || "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
-  runpodQwenUrl: process.env.RUNPOD_QWEN_URL || "",
+  runpodApiKey: process.env.RUNPOD_API_KEY || "",
 } as const;
 
-export const MASCOT_PATHS = {
-  mascot1: path.join(PROJECT_ROOT, "mascots", "mascot-1.png"),
-  mascot2: path.join(PROJECT_ROOT, "mascots", "mascot-2.png"),
-} as const;
+export const MASCOT_URL =
+  "https://raw.githubusercontent.com/geeksilva97/kanario/main/mascots/mascot3d.png";
 
 export const OUTPUT_DIR = path.join(PROJECT_ROOT, "output");
 

@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
-import { config, MASCOT_PATHS, OUTPUT_DIR } from "./config.ts";
+import { config, OUTPUT_DIR } from "./config.ts";
 import { fetchDraft } from "./wordpress.ts";
 import { generatePrompts } from "./prompt-generator.ts";
 import { generateImages } from "./image-generator.ts";
@@ -38,19 +38,11 @@ const missing: string[] = [];
 if (!config.wpUsername) missing.push("WP_USERNAME");
 if (!config.wpAppPassword) missing.push("WP_APP_PASSWORD");
 if (!config.anthropicApiKey) missing.push("ANTHROPIC_API_KEY");
-if (!config.runpodQwenUrl) missing.push("RUNPOD_QWEN_URL");
+if (!config.runpodApiKey) missing.push("RUNPOD_API_KEY");
 if (missing.length > 0) {
   console.error(`Missing environment variables: ${missing.join(", ")}`);
   console.error("Copy .env.example to .env and fill in the values.");
   process.exit(1);
-}
-
-// Validate mascot images exist
-for (const [name, mascotPath] of Object.entries(MASCOT_PATHS)) {
-  if (!fs.existsSync(mascotPath)) {
-    console.error(`Mascot image not found: ${mascotPath}`);
-    process.exit(1);
-  }
 }
 
 // Step 1: Fetch WordPress draft
@@ -76,8 +68,6 @@ for (const [i, prompt] of result.prompts.entries()) {
   console.log(`\n  Prompt ${i + 1}: ${prompt.scene}`);
   const paths = await generateImages({
     prompt: prompt.full_prompt,
-    mascot1Path: MASCOT_PATHS.mascot1,
-    mascot2Path: MASCOT_PATHS.mascot2,
     outputDir,
     filenamePrefix: `prompt-${i + 1}`,
   });
