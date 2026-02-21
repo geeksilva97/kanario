@@ -6,7 +6,7 @@ Given a post ID, the CLI:
 
 1. Fetches the draft from WordPress REST API
 2. Sends the content to Claude, which generates 2-3 scene descriptions
-3. Sends each prompt to Qwen Image Edit with two mascot reference images (2 images per prompt → 4-6 options total)
+3. Sends each prompt to Qwen Image Edit (RunPod Hub public endpoint) with a mascot reference image (2 images per prompt → 4-6 options total)
 4. Saves everything to `output/<post-id>/`
 
 ## Setup
@@ -24,7 +24,7 @@ cp .env.example .env  # fill in credentials
 | `WP_USERNAME` | WordPress username |
 | `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
-| `RUNPOD_QWEN_URL` | RunPod Qwen server URL (e.g. `https://<pod-id>-8000.proxy.runpod.net`) |
+| `RUNPOD_API_KEY` | RunPod API key (from [runpod.io](https://www.runpod.io/) account settings) |
 
 ### WordPress Application Password
 
@@ -57,9 +57,97 @@ output/12345/
 └── prompts.json
 ```
 
-## RunPod Server
+## RunPod Hub API (qwen-image-edit)
 
-The `server/` directory contains a FastAPI server that runs Qwen Image Edit on a GPU. It accepts two mascot reference images and a text prompt, and returns a generated PNG.
+Image generation uses RunPod Hub's **public serverless endpoint** — no custom deployment needed. ~$0.02/request.
+
+### How it works
+
+The workflow is async (submit → poll → download):
+
+1. **Submit a job** — `POST /run` returns a job ID
+2. **Poll for status** — `GET /status/{id}` until `COMPLETED`
+3. **Download the image** — result is a CloudFront URL in `output.result`
+
+### API reference
+
+Base URL: `https://api.runpod.ai/v2/qwen-image-edit`
+
+All requests require: `Authorization: Bearer {RUNPOD_API_KEY}`
+
+#### Submit job
+
+```
+POST /run
+Content-Type: application/json
+
+{
+  "input": {
+    "prompt": "description of the scene",
+    "image": "data:image/png;base64,{base64data}",
+    "seed": 12345,
+    "output_format": "png"
+  }
+}
+```
+
+The `image` field accepts:
+- A **public URL** (must be publicly accessible — private GitHub raw URLs won't work)
+- **Inline base64** with data URI prefix: `data:image/png;base64,{base64data}`
+
+We use base64 because the kanario repo is private and raw GitHub URLs return 404.
+
+Response:
+```json
+{ "id": "job-id", "status": "IN_QUEUE" }
+```
+
+#### Poll status
+
+```
+GET /status/{job-id}
+```
+
+Status values: `IN_QUEUE` → `IN_PROGRESS` → `COMPLETED` or `FAILED`.
+
+Poll interval of 3 seconds works well. Jobs typically complete in 10-30 seconds.
+
+#### Completed response
+
+```json
+{
+  "id": "job-id",
+  "status": "COMPLETED",
+  "output": {
+    "cost": 0.02,
+    "result": "https://d2p7pge43lyniu.cloudfront.net/output/{uuid}.png"
+  }
+}
+```
+
+The result is a **CloudFront CDN URL** — fetch it to download the PNG.
+
+#### Failed response
+
+```json
+{
+  "id": "job-id",
+  "status": "FAILED",
+  "error": "Error during processing: ...",
+  "output": { "status": "failed" }
+}
+```
+
+### Gotchas
+
+- **Output is a URL, not base64.** RunPod docs may suggest `output.output_image_base64`, but the actual response uses `output.result` containing a CloudFront URL.
+- **Private repo URLs don't work.** RunPod's worker fetches the image server-side, so any URL must be publicly accessible. Use inline base64 for private assets.
+- **Single image reference.** The `image` field takes one reference image, not multiple.
+- **No width/height params.** Output dimensions are determined by the model.
+
+## Legacy: Custom RunPod Server
+
+The `server/` directory contains a FastAPI server that runs Qwen Image Edit on a custom GPU pod. This was replaced by the RunPod Hub public endpoint above, but the code is kept for reference.
 
 ### Deploy
 
@@ -74,30 +162,6 @@ Requires `RUNPOD_API_KEY` and `RUNPOD_DOCKER_IMAGE` env vars.
 ./server/deploy-runpod.sh destroy   # delete pod + volume
 ```
 
-First boot downloads the model (~65 GB) and takes ~15-20 minutes.
-
-### API
-
-```
-POST /generate (multipart/form-data)
-
-Fields:
-  prompt              str   (required)
-  reference_image_1   file  (required)
-  reference_image_2   file  (required)
-  seed                int   (default: -1, random)
-  num_inference_steps int   (default: 40)
-  true_cfg_scale      float (default: 4.0)
-  width               int   (default: 1280)
-  height              int   (default: 720)
-
-Response: image/png
-```
-
-```
-GET /health → {"status": "ok"}
-```
-
 ## Tests
 
 ```bash
@@ -108,4 +172,4 @@ npm test
 
 - Node.js >= 22 (native fetch, `--experimental-strip-types`, `node:test`)
 - Single external dependency: `@anthropic-ai/sdk`
-- Python FastAPI server for Qwen Image Edit on RunPod (NVIDIA A100 80GB)
+- RunPod Hub serverless endpoint for Qwen Image Edit (no custom infra)
