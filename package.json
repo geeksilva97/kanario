@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node --env-file=.env --experimental-strip-types src/index.ts",
     "test": "node --experimental-strip-types --test test/index.test.ts",
+    "test:coverage": "node --experimental-strip-types --test --experimental-test-coverage test/index.test.ts",
     "test:integration": "node --env-file=.env.test --experimental-strip-types --test test/wordpress.integration.test.ts"
   },
   "dependencies": {

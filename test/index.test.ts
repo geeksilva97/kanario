@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { stripHtml } from "../src/wordpress.ts";
-import { STYLE_TEMPLATE, config, PROJECT_ROOT } from "../src/config.ts";
+import { PROMPT_TEMPLATE, config, PROJECT_ROOT } from "../src/config.ts";
 
 describe("stripHtml", () => {
   it("removes HTML tags", () => {
@@ -43,36 +43,44 @@ describe("config", () => {
   });
 });
 
-describe("STYLE_TEMPLATE", () => {
+describe("PROMPT_TEMPLATE", () => {
   it("starts with isometric 3D instruction", () => {
-    assert.ok(STYLE_TEMPLATE.startsWith("Isometric 3D"));
+    assert.ok(PROMPT_TEMPLATE.startsWith("Isometric 3D"));
   });
 
   it("mentions white background", () => {
-    assert.ok(STYLE_TEMPLATE.includes("pure white background"));
+    assert.ok(PROMPT_TEMPLATE.includes("pure white background"));
   });
 
-  it("mentions both mascots", () => {
-    assert.ok(STYLE_TEMPLATE.includes("reference image 1"));
-    assert.ok(STYLE_TEMPLATE.includes("reference image 2"));
+  it("includes Lock angle and position trick", () => {
+    assert.ok(PROMPT_TEMPLATE.includes("Lock angle and position"));
   });
 
-  it("specifies 16:9 aspect ratio", () => {
-    assert.ok(STYLE_TEMPLATE.includes("16:9"));
+  it("has [SCENE] placeholder", () => {
+    assert.ok(PROMPT_TEMPLATE.includes("[SCENE]"));
+  });
+
+  it("specifies 16:9 widescreen format", () => {
+    assert.ok(PROMPT_TEMPLATE.includes("16:9"));
   });
 });
 
 describe("prompt structure validation", () => {
   it("validates a correct prompt result", () => {
+    const sceneDescription = "A small mascot from the reference image sits at a desk in the foreground, facing a laptop screen with code visible on it";
     const result = {
       prompts: [
         {
-          scene: "collaborating at a whiteboard",
-          full_prompt: `${STYLE_TEMPLATE} collaborating at a whiteboard with architecture diagrams`,
+          scene: "debugging with magnifying glass",
+          variation: "detective investigating",
+          scene_description: sceneDescription,
+          full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", sceneDescription),
         },
         {
-          scene: "debugging code together",
-          full_prompt: `${STYLE_TEMPLATE} debugging code together on a giant screen`,
+          scene: "coding at a desk",
+          variation: "on laptop",
+          scene_description: "A small mascot from the reference image types on a laptop placed in the midground, with floating code snippets in the background",
+          full_prompt: PROMPT_TEMPLATE.replace("[SCENE]", "A small mascot from the reference image types on a laptop placed in the midground, with floating code snippets in the background"),
         },
       ],
     };
@@ -82,8 +90,12 @@ describe("prompt structure validation", () => {
 
     for (const p of result.prompts) {
       assert.ok(typeof p.scene === "string" && p.scene.length > 0);
+      assert.ok(typeof p.variation === "string" && p.variation.length > 0);
+      assert.ok(typeof p.scene_description === "string" && p.scene_description.length > 0);
       assert.ok(typeof p.full_prompt === "string");
       assert.ok(p.full_prompt.startsWith("Isometric 3D"));
+      assert.ok(p.full_prompt.includes("Lock angle and position"));
+      assert.ok(!p.full_prompt.includes("[SCENE]"));
     }
   });
 

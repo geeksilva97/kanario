@@ -16,8 +16,4 @@ export const MASCOT_PATH = path.join(PROJECT_ROOT, "mascots", "mascot3d.png");
 
 export const OUTPUT_DIR = path.join(PROJECT_ROOT, "output");
 
-export const STYLE_TEMPLATE = `Isometric 3D illustration on a pure white background.
-Wide establishing shot, zoomed out to show the full scene from a distance.
-Pixar-style 3D render with clean, minimal shadows.
-Centered composition, 16:9 aspect ratio.
-Two robot mascots (reference image 1 and reference image 2)`;
+export const PROMPT_TEMPLATE = `Isometric 3D scene, Pixar-style render, pure white background, clean minimal shadows. Wide establishing shot, zoomed out to show the full scene from a distance. [SCENE]. Lock angle and position. Generous empty space surrounding all elements, centered composition, 16:9 widescreen format.`;
