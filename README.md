@@ -62,6 +62,7 @@ Options:
 |---|---|
 | `--model` | LLM for prompt generation: `gemini` (default) or `claude` |
 | `--image-model` | Image generation backend: `qwen` (default, RunPod) or `nano-banana` (Vertex AI) |
+| `-o, --output` | Custom output directory (default: `output/<post-id>`) |
 | `--no-wide` | Disable 16:9 padding, output matches mascot aspect ratio (square) |
 | `--hint` | Guide the visual metaphor (e.g. `"two models competing side by side"`) |
 | `-h, --help` | Show help |

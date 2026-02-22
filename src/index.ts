@@ -6,6 +6,7 @@ const { values, positionals } = parseArgs({
     hint: { type: "string" },
     model: { type: "string", default: "gemini" },
     "image-model": { type: "string", default: "qwen" },
+    output: { type: "string", short: "o" },
     wide: { type: "boolean", default: true },
     "no-wide": { type: "boolean", default: false },
     help: { type: "boolean", short: "h" },
@@ -28,6 +29,7 @@ Arguments:
 Options:
   --model        LLM for prompt generation: "gemini" (default) or "claude"
   --image-model  Image backend: "qwen" (default) or "nano-banana"
+  -o, --output   Custom output directory (default: output/<post-id>)
   --no-wide      Disable 16:9 padding, output matches mascot aspect ratio (square)
   --hint         Guide the visual metaphor (e.g. "two models competing side by side")
   -h, --help     Show this help

@@ -4,11 +4,12 @@ import { generateWorkflow } from "../workflows/generate.ts";
 
 export async function generate(
   positionals: string[],
-  values: { hint?: string; model?: string; "image-model"?: string; wide?: boolean; "no-wide"?: boolean },
+  values: { hint?: string; model?: string; "image-model"?: string; output?: string; wide?: boolean; "no-wide"?: boolean },
 ) {
   const postId = await resolvePostId(positionals[0]);
   const model = values.model as string;
   const imageModel = (values["image-model"] || "qwen") as ImageModel;
+  const outputDir = values.output;
   const wide = values["no-wide"] ? false : (values.wide as boolean);
   const hint = values.hint;
 
@@ -24,7 +25,7 @@ export async function generate(
 
   try {
     const result = await generateWorkflow(
-      { postId, model, imageModel, wide, hint },
+      { postId, model, imageModel, outputDir, wide, hint },
       (msg) => console.log(msg),
     );
     console.log(`\nDone! Generated ${result.imagePaths.length} images in ${result.outputDir}`);

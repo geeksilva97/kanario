@@ -11,6 +11,7 @@ export interface GenerateOptions {
   postId: string;
   model: "gemini" | "claude";
   imageModel?: ImageModel;
+  outputDir?: string;
   wide: boolean;
   hint?: string;
 }
@@ -26,7 +27,7 @@ export async function generateWorkflow(
   options: GenerateOptions,
   onProgress?: (msg: string) => void,
 ): Promise<GenerateResult> {
-  const { postId, model, imageModel = "qwen", wide, hint } = options;
+  const { postId, model, imageModel = "qwen", outputDir: customOutputDir, wide, hint } = options;
   const log = onProgress ?? (() => {});
 
   if (model !== "claude" && model !== "gemini") {
@@ -68,7 +69,7 @@ export async function generateWorkflow(
   // Step 3: Generate images
   const imageLabel = imageModel === "nano-banana" ? "Nano Banana" : "Qwen Image Edit";
   log(`[3/4] Generating images via ${imageLabel} (${wide ? "wide" : "square"}) ...`);
-  const outputDir = path.join(OUTPUT_DIR, postId);
+  const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, postId);
 
   const jobs = result.prompts.map((prompt, i) => {
     const mascotId = (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
