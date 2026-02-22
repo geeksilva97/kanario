@@ -6,7 +6,7 @@
 
 Blog thumbnail generator. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via an image backend (Qwen Image Edit on RunPod or Nano Banana on Vertex AI).
 
-Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/pick`). Both interfaces use the same underlying workflows.
+Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/improve`, `/pick`). Both interfaces use the same underlying workflows.
 
 Given a post ID (or URL), the CLI:
 
@@ -82,6 +82,24 @@ Examples:
 ./kanario 12487 --image-model nano-banana
 ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
 ./kanario "https://blog.codeminer42.com/some-post-slug/"
+```
+
+### Improve an existing image
+
+```bash
+./kanario improve <post-id> <image> --prompt "your instructions"
+```
+
+Iterates on an existing generated image. The source image is sent as-is to the image backend with your prompt (no style template wrapping). Generates 2 new variants with the next available numbers (e.g. `prompt-6.png`, `prompt-7.png`).
+
+`<image>` accepts a shorthand like `2` (resolves to `output/<post-id>/prompt-2.png`) or a full file path.
+
+Examples:
+
+```bash
+./kanario improve 12487 2 --prompt "make the background darker"
+./kanario improve 12487 3 --prompt "remove the robot and add more plants"
+./kanario improve 12487 /path/to/image.png --prompt "make it more vibrant"
 ```
 
 ### Pick & upload featured image
@@ -166,9 +184,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `/unregister` | Remove your stored WordPress credentials |
 | `/whoami` | Show your registered URL and username (no password) |
 | `/generate post_id [model] [image_model] [hint]` | Generate 5 thumbnail images for a WordPress post (requires registration) |
+| `/improve post_id image_url prompt [image_model]` | Iterate on a generated image with a new prompt |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (requires registration) |
 
-All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate` and `/pick` results are visible to the channel.
+All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate`, `/improve`, and `/pick` results are visible to the channel.
 
 ### Health check
 

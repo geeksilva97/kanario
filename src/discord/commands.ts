@@ -1,9 +1,12 @@
 import fs from "node:fs";
-import { config } from "../config.ts";
+import os from "node:os";
+import path from "node:path";
+import { config, OUTPUT_DIR } from "../config.ts";
 import type { WPCredentials } from "../credentials.ts";
 import { validateWPCredentials } from "../credentials.ts";
 import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
+import { improveWorkflow } from "../workflows/improve.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 import { resolveImagePath } from "../commands/pick.ts";
 import { fetchDraft, resolvePostId } from "../wordpress.ts";
@@ -67,6 +70,39 @@ export const COMMAND_DEFINITIONS = [
         description: 'Image shorthand (e.g. "2") or full file path',
         type: 3, // STRING
         required: true,
+      },
+    ],
+  },
+  {
+    name: "improve",
+    description: "Iterate on an existing image with a new prompt",
+    options: [
+      {
+        name: "post_id",
+        description: "WordPress post ID (used for output directory)",
+        type: 3, // STRING
+        required: true,
+      },
+      {
+        name: "image_url",
+        description: "Discord CDN URL of the image to improve",
+        type: 3, // STRING
+        required: true,
+      },
+      {
+        name: "prompt",
+        description: "Improvement instructions (e.g. \"make the background darker\")",
+        type: 3, // STRING
+        required: true,
+      },
+      {
+        name: "image_model",
+        description: "Image generation backend",
+        type: 3, // STRING
+        choices: [
+          { name: "Qwen on RunPod (default)", value: "qwen" },
+          { name: "Nano Banana (Vertex AI)", value: "nano-banana" },
+        ],
       },
     ],
   },
@@ -270,6 +306,51 @@ async function handlePick(interaction: any) {
   }
 }
 
+async function handleImprove(interaction: any) {
+  const token = interaction.token;
+  const rawPostId = getOptionValue(interaction, "post_id") || "";
+  const imageUrl = getOptionValue(interaction, "image_url") || "";
+  const prompt = getOptionValue(interaction, "prompt") || "";
+  const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
+
+  let tempFile: string | undefined;
+
+  try {
+    // Download image from URL to temp file
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    tempFile = path.join(os.tmpdir(), `kanario-improve-${Date.now()}.png`);
+    fs.writeFileSync(tempFile, buffer);
+
+    const outputDir = path.join(OUTPUT_DIR, rawPostId);
+
+    const result = await improveWorkflow(
+      { sourceImagePath: tempFile, prompt, imageModel, outputDir },
+    );
+
+    const mention = getUserMention(interaction);
+    const content = `${mention} Improved image with: "${prompt}"\n\nGenerated ${result.imagePaths.length} variants:`;
+
+    const files = result.imagePaths.map((p) => ({
+      name: p.split("/").pop()!,
+      path: p,
+    }));
+
+    await editOriginalMessage(token, content, files);
+  } catch (err) {
+    const mention = getUserMention(interaction);
+    const msg = err instanceof Error ? err.message : String(err);
+    await editOriginalMessage(token, `${mention} Improve failed: ${msg}`);
+  } finally {
+    if (tempFile) {
+      try { fs.unlinkSync(tempFile); } catch {}
+    }
+  }
+}
+
 async function handleRegisterAsync(interaction: any) {
   const token = interaction.token;
   const userId = getUserId(interaction);
@@ -348,12 +429,14 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 \`/unregister\` — Remove your stored credentials
 \`/whoami\` — Check your registered credentials
 \`/generate post_id [model] [image_model] [hint]\` — Generate 5 thumbnail options
+\`/improve post_id image_url prompt [image_model]\` — Iterate on an existing image
 \`/pick post_id image\` — Upload an image and set it as featured
 \`/help\` — Show this message
 
 **Tips:**
 - \`post_id\` accepts a numeric ID, a wp-admin URL, or a published post URL
 - Use \`--hint\` to guide the visual metaphor (e.g. "two models competing")
+- Use \`/improve\` to tweak a generated image — copy its URL from \`/generate\` output
 - Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)`;
 
 export function handleInteraction(body: any) {
@@ -398,6 +481,8 @@ export function handleInteraction(body: any) {
     handleGenerate(body);
   } else if (commandName === "pick") {
     handlePick(body);
+  } else if (commandName === "improve") {
+    handleImprove(body);
   }
 
   // Return deferred response immediately (under 3s deadline)

@@ -54,9 +54,11 @@ src/
 │   └── sqlite.d.ts           # Type declarations for node:sqlite (experimental)
 ├── commands/
 │   ├── generate.ts           # CLI generate command handler
+│   ├── improve.ts            # CLI improve command handler
 │   └── pick.ts               # CLI pick command handler
 ├── workflows/
 │   ├── generate.ts           # Core generate workflow (shared by CLI + Discord)
+│   ├── improve.ts            # Core improve workflow (shared by CLI + Discord)
 │   └── pick.ts               # Core pick workflow (shared by CLI + Discord)
 └── discord/
     ├── commands.ts           # Discord slash command definitions + interaction handler
