@@ -4,7 +4,7 @@
 
 # Kanario
 
-Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via an image backend (Qwen Image Edit on RunPod or Nano Banana on Vertex AI).
+Blog thumbnail generator. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via an image backend (Qwen Image Edit on RunPod or Nano Banana on Vertex AI).
 
 Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/pick`). Both interfaces use the same underlying workflows.
 

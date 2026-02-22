@@ -1,6 +1,6 @@
 # Kanario
 
-Blog thumbnail generator for Codeminer42. Fetches a WordPress draft, generates image prompts via an LLM, then produces cover images via an image backend.
+Blog thumbnail generator. Fetches a WordPress draft, generates image prompts via an LLM, then produces cover images via an image backend.
 
 ## Commands
 
