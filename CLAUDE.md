@@ -39,7 +39,7 @@ gcloud run services update kanario-discord \
 
 ```
 deploy/
-└── deploy.sh                 # Build, push, and deploy Discord bot to Cloud Run (includes GCS FUSE mount)
+└── deploy.sh                 # Build, push, deploy Discord bot to Cloud Run (GCS FUSE mount + Cloud Scheduler keep-alive)
 src/
 ├── index.ts                  # CLI entry point, parseArgs
 ├── config.ts                 # Env vars, mascot paths, style template, constants
@@ -86,6 +86,7 @@ src/
 - **Discord credential commands** — `/register` (DMs only, validates + stores), `/unregister` (deletes stored credentials), `/whoami` (shows URL + username, no password), `/help` (explains how the bot works). All ephemeral (only visible to invoker). `/help` returns an immediate response; all others use deferred responses.
 - **Credential storage** — `node:sqlite` (experimental, `--experimental-sqlite` flag) with SQLite file at `/app/data/credentials.db` (production, GCS FUSE mount) or `./data/credentials.db` (local dev). Encryption key from `CREDENTIAL_ENCRYPTION_KEY` env var; no-op if unset.
 - **All Discord commands use deferred responses** — Discord requires a response within 3s. All commands return a deferred message immediately and edit it after async work completes. Credential commands use ephemeral flag. `/register` in a guild channel is the only exception — rejected immediately with a security warning.
+- **Cloud Scheduler keep-alive** — `deploy.sh` creates a Cloud Scheduler job (`kanario-keep-alive`) that pings `GET /health` every 5 minutes to prevent cold starts (which exceed Discord's 3s deadline). Uses `update || create` pattern for idempotency.
 - **Image backends implement `ImageBackend` interface** — `generate()` takes prompt + optional mascotPath + seed + wide, returns a PNG `Buffer`. Optional `maxConcurrency` limits parallel jobs.
 - **Mascot is optional per scene** — the LLM decides independently for each scene whether a mascot fits (`miner`, `hat`) or a scene-only diorama works better (`none`). When `none`, Qwen gets a blank white canvas (required field), Nano Banana gets text-only content.
 - **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.

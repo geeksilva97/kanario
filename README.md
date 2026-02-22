@@ -204,7 +204,7 @@ The Discord bot runs on Google Cloud Run so it's always available at a public HT
 ### Prerequisites
 
 - [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`) installed and authenticated
-- A GCP project with Cloud Run and Artifact Registry APIs enabled
+- A GCP project with Cloud Run, Artifact Registry, and Cloud Scheduler APIs enabled
 - An Artifact Registry Docker repository named `kanario` in your region:
 
 ```bash
@@ -272,7 +272,7 @@ Discord will send a PING to verify the endpoint responds with PONG before saving
 | CPU | 1 |
 | CPU throttling | Off (background work runs after the deferred response) |
 | Timeout | 300s |
-| Min instances | 0 (scales to zero) |
+| Min instances | 0 (kept warm by Cloud Scheduler pinging `/health` every 5 min) |
 | Max instances | 3 |
 | Port | 8080 |
 
