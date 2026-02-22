@@ -163,7 +163,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `/generate post_id [model] [image_model] [hint]` | Generate 4 thumbnail images for a WordPress post (requires registration) |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (requires registration) |
 
-`/register`, `/unregister`, and `/whoami` responses are ephemeral (only visible to you). `/generate` and `/pick` respond with a deferred message, then edit it with the result once the workflow completes.
+All commands use deferred responses (Discord's 3s deadline). `/register`, `/unregister`, and `/whoami` are also ephemeral (only visible to you). `/generate` and `/pick` results are visible to the channel.
 
 ### Health check
 

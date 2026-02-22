@@ -184,14 +184,6 @@ async function editOriginalMessage(
   });
 }
 
-function requireCredentials(
-  interaction: any,
-): WPCredentials | null {
-  const userId = getUserId(interaction);
-  const creds = loadCredentials(userId);
-  return creds;
-}
-
 async function handleGenerate(interaction: any) {
   const token = interaction.token;
   const userId = getUserId(interaction);
@@ -274,31 +266,16 @@ async function handlePick(interaction: any) {
   }
 }
 
-async function handleRegister(interaction: any): Promise<{ type: number; data: { content: string; flags: number } }> {
-  // Reject if used in a guild channel (password would be visible to others)
-  if (isInGuild(interaction)) {
-    return {
-      type: CHANNEL_MESSAGE,
-      data: {
-        content: "For security, please use `/register` in a **DM with me** — your app password would be visible to others in a channel.",
-        flags: EPHEMERAL,
-      },
-    };
-  }
-
+async function handleRegisterAsync(interaction: any) {
+  const token = interaction.token;
   const userId = getUserId(interaction);
   const wpUrl = (getOptionValue(interaction, "wp_url") || "").replace(/\/+$/, "");
   const username = getOptionValue(interaction, "username") || "";
   const appPassword = getOptionValue(interaction, "app_password") || "";
 
   if (!wpUrl || !username || !appPassword) {
-    return {
-      type: CHANNEL_MESSAGE,
-      data: {
-        content: "All fields are required: `wp_url`, `username`, `app_password`.",
-        flags: EPHEMERAL,
-      },
-    };
+    await editOriginalMessage(token, "All fields are required: `wp_url`, `username`, `app_password`.");
+    return;
   }
 
   const creds: WPCredentials = {
@@ -309,83 +286,79 @@ async function handleRegister(interaction: any): Promise<{ type: number; data: {
 
   const result = await validateWPCredentials(creds);
   if (!result.valid) {
-    return {
-      type: CHANNEL_MESSAGE,
-      data: {
-        content: `WordPress authentication failed: ${result.error}\n\nPlease check your URL, username, and app password.`,
-        flags: EPHEMERAL,
-      },
-    };
+    await editOriginalMessage(
+      token,
+      `WordPress authentication failed: ${result.error}\n\nPlease check your URL, username, and app password.`,
+    );
+    return;
   }
 
   saveCredentials(userId, creds);
-
-  return {
-    type: CHANNEL_MESSAGE,
-    data: {
-      content: `Registered successfully as **${result.displayName}** on \`${wpUrl}\`.`,
-      flags: EPHEMERAL,
-    },
-  };
+  await editOriginalMessage(
+    token,
+    `Registered successfully as **${result.displayName}** on \`${wpUrl}\`.`,
+  );
 }
 
-function handleUnregister(interaction: any): { type: number; data: { content: string; flags: number } } {
+async function handleUnregisterAsync(interaction: any) {
+  const token = interaction.token;
   const userId = getUserId(interaction);
   const deleted = deleteCredentials(userId);
 
-  return {
-    type: CHANNEL_MESSAGE,
-    data: {
-      content: deleted
-        ? "Your WordPress credentials have been removed."
-        : "No credentials found — you weren't registered.",
-      flags: EPHEMERAL,
-    },
-  };
+  await editOriginalMessage(
+    token,
+    deleted
+      ? "Your WordPress credentials have been removed."
+      : "No credentials found — you weren't registered.",
+  );
 }
 
-function handleWhoami(interaction: any): { type: number; data: { content: string; flags: number } } {
+async function handleWhoamiAsync(interaction: any) {
+  const token = interaction.token;
   const userId = getUserId(interaction);
   const info = getCredentialInfo(userId);
 
   if (!info) {
-    return {
-      type: CHANNEL_MESSAGE,
-      data: {
-        content: "You haven't registered yet. Use `/register` in a DM with me.",
-        flags: EPHEMERAL,
-      },
-    };
+    await editOriginalMessage(token, "You haven't registered yet. Use `/register` in a DM with me.");
+    return;
   }
 
-  return {
-    type: CHANNEL_MESSAGE,
-    data: {
-      content: `**WordPress credentials:**\nURL: \`${info.wpUrl}\`\nUsername: \`${info.wpUsername}\`\nRegistered: ${info.registeredAt}`,
-      flags: EPHEMERAL,
-    },
-  };
+  await editOriginalMessage(
+    token,
+    `**WordPress credentials:**\nURL: \`${info.wpUrl}\`\nUsername: \`${info.wpUsername}\`\nRegistered: ${info.registeredAt}`,
+  );
 }
 
 export function handleInteraction(body: any) {
   const commandName = body.data?.name;
 
-  // Synchronous commands — return immediate response
-  if (commandName === "register") {
-    // register is async (validates WP credentials) but we handle it inline
-    // since Discord needs a response within 3s and validation is fast
-    return handleRegister(body);
-  }
-
-  if (commandName === "unregister") {
-    return handleUnregister(body);
-  }
-
-  if (commandName === "whoami") {
-    return handleWhoami(body);
+  // Reject /register in guild channels immediately (no async work needed)
+  if (commandName === "register" && isInGuild(body)) {
+    return {
+      type: CHANNEL_MESSAGE,
+      data: {
+        content: "For security, please use `/register` in a **DM with me** — your app password would be visible to others in a channel.",
+        flags: EPHEMERAL,
+      },
+    };
   }
 
   // Fire-and-forget: run the handler without awaiting
+  if (commandName === "register") {
+    handleRegisterAsync(body);
+    return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+  }
+
+  if (commandName === "unregister") {
+    handleUnregisterAsync(body);
+    return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+  }
+
+  if (commandName === "whoami") {
+    handleWhoamiAsync(body);
+    return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+  }
+
   if (commandName === "generate") {
     handleGenerate(body);
   } else if (commandName === "pick") {

@@ -76,8 +76,11 @@ src/
 
 ## Key patterns
 
-- **Per-user WordPress credentials** — Discord bot users register their own WP credentials via `/register` (validated against WP API, stored in SQLite with AES-256-GCM encryption). CLI uses env vars via `credentialsFromEnv()`. All WP functions take `WPCredentials` as first parameter.
+- **Per-user WordPress credentials** — Discord bot users register their own WP credentials via `/register`. CLI uses env vars via `credentialsFromEnv()`. All WP functions take `WPCredentials` as first parameter.
+- **`/register` flow** — user DMs the bot with `/register wp_url username app_password`. The bot calls `GET /wp-json/wp/v2/users/me` with those credentials to validate. On success, credentials are saved to SQLite (app password encrypted with AES-256-GCM). Rejected in guild channels for security (password visible to others). `/generate` and `/pick` require registration — they load credentials from SQLite by Discord user ID.
+- **Discord credential commands** — `/register` (DMs only, validates + stores), `/unregister` (deletes stored credentials), `/whoami` (shows URL + username, no password). All ephemeral (only visible to invoker).
 - **Credential storage** — `node:sqlite` (experimental, `--experimental-sqlite` flag) with SQLite file at `/app/data/credentials.db` (production, GCS FUSE mount) or `./data/credentials.db` (local dev). Encryption key from `CREDENTIAL_ENCRYPTION_KEY` env var; no-op if unset.
+- **All Discord commands use deferred responses** — Discord requires a response within 3s. All commands return a deferred message immediately and edit it after async work completes. Credential commands use ephemeral flag. `/register` in a guild channel is the only exception — rejected immediately with a security warning.
 - **Image backends implement `ImageBackend` interface** — `generate()` takes prompt + optional mascotPath + seed + wide, returns a PNG `Buffer`. Optional `maxConcurrency` limits parallel jobs.
 - **Mascot is optional per scene** — the LLM decides independently for each scene whether a mascot fits (`miner`, `hat`) or a scene-only diorama works better (`none`). When `none`, Qwen gets a blank white canvas (required field), Nano Banana gets text-only content.
 - **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.
