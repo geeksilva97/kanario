@@ -18,16 +18,20 @@ export async function verifySignature(
 ): Promise<boolean> {
   const key = await crypto.subtle.importKey(
     "raw",
-    hexToUint8Array(publicKeyHex),
+    hexToUint8Array(publicKeyHex) as BufferSource,
     "Ed25519",
     false,
     ["verify"],
   );
 
   const message = new TextEncoder().encode(timestamp + rawBody);
-  const sig = hexToUint8Array(signature);
 
-  return crypto.subtle.verify("Ed25519", key, sig, message);
+  return crypto.subtle.verify(
+    "Ed25519",
+    key,
+    hexToUint8Array(signature) as BufferSource,
+    message,
+  );
 }
 
 export function buildApp() {

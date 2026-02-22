@@ -5,6 +5,7 @@ const { values, positionals } = parseArgs({
   options: {
     hint: { type: "string" },
     model: { type: "string", default: "gemini" },
+    "image-model": { type: "string", default: "qwen" },
     wide: { type: "boolean", default: true },
     "no-wide": { type: "boolean", default: false },
     help: { type: "boolean", short: "h" },
@@ -18,22 +19,24 @@ if (values.help || positionals.length === 0) {
   ./kanario pick <post-id-or-url> <image>    Upload & set featured image
 
 Fetches a WordPress draft, generates thumbnail prompts via an LLM,
-and produces cover images via Qwen Image Edit on RunPod.
+and produces cover images via an image backend (Qwen on RunPod or Nano Banana on Vertex AI).
 
 Arguments:
   post-id-or-url  WordPress post ID or wp-admin edit URL
   <image>         Shorthand (e.g. "2a") or full path to a PNG
 
 Options:
-  --model     LLM for prompt generation: "gemini" (default) or "claude"
-  --no-wide   Disable 16:9 padding, output matches mascot aspect ratio (square)
-  --hint      Guide the visual metaphor (e.g. "two models competing side by side")
-  -h, --help  Show this help
+  --model        LLM for prompt generation: "gemini" (default) or "claude"
+  --image-model  Image backend: "qwen" (default) or "nano-banana"
+  --no-wide      Disable 16:9 padding, output matches mascot aspect ratio (square)
+  --hint         Guide the visual metaphor (e.g. "two models competing side by side")
+  -h, --help     Show this help
 
 Examples:
   ./kanario 12487
   ./kanario 12487 --no-wide
   ./kanario 12487 --model claude
+  ./kanario 12487 --image-model nano-banana
   ./kanario 12487 --hint "versus scene, two robots facing off"
   ./kanario pick 12487 2a
   ./kanario pick 12487 /path/to/custom.png`);

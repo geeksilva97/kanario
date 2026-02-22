@@ -30,6 +30,15 @@ export const COMMAND_DEFINITIONS = [
         ],
       },
       {
+        name: "image_model",
+        description: "Image generation backend",
+        type: 3, // STRING
+        choices: [
+          { name: "Qwen on RunPod (default)", value: "qwen" },
+          { name: "Nano Banana (Vertex AI)", value: "nano-banana" },
+        ],
+      },
+      {
         name: "hint",
         description: "Guide the visual metaphor",
         type: 3, // STRING
@@ -127,6 +136,7 @@ async function handleGenerate(interaction: any) {
   const token = interaction.token;
   const rawPostId = getOptionValue(interaction, "post_id") || "";
   const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
+  const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
   const hint = getOptionValue(interaction, "hint");
 
   try {
@@ -134,7 +144,7 @@ async function handleGenerate(interaction: any) {
     const progressMessages: string[] = [];
 
     const result = await generateWorkflow(
-      { postId, model, wide: true, hint },
+      { postId, model, imageModel, wide: true, hint },
       (msg) => progressMessages.push(msg),
     );
 

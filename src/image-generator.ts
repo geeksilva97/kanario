@@ -1,10 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
-import { config } from "./config.ts";
-
-const RUNPOD_BASE = "https://api.runpod.ai/v2/qwen-image-edit";
-const POLL_INTERVAL_MS = 3_000;
+import type { ImageBackend, ImageModel } from "./image-backend.ts";
+import { createQwenBackend } from "./qwen-backend.ts";
+import { createNanoBananaBackend } from "./nano-banana-backend.ts";
 
 export interface GenerateImageOptions {
   prompt: string;
@@ -22,44 +21,12 @@ export interface SingleImageOptions {
   wide?: boolean;
 }
 
-async function runpodRequest(endpoint: string, init?: RequestInit) {
-  const res = await fetch(`${RUNPOD_BASE}${endpoint}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${config.runpodApiKey}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`RunPod API error ${res.status}: ${text}`);
-  }
-
-  return res.json();
-}
-
-async function pollUntilCompleted(jobId: string): Promise<any> {
-  while (true) {
-    const status = await runpodRequest(`/status/${jobId}`);
-
-    if (status.status === "COMPLETED") {
-      return status;
-    }
-
-    if (status.status === "FAILED") {
-      throw new Error(`RunPod job ${jobId} failed: ${JSON.stringify(status)}`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-  }
-}
+// Shared utilities used by backends
 
 const CANVAS_WIDTH = 1280;
 const CANVAS_HEIGHT = 720;
 
-async function padToWidescreen(mascotPath: string): Promise<string> {
+export async function padToWidescreen(mascotPath: string): Promise<string> {
   const mascot = sharp(mascotPath);
   const { width, height } = await mascot.metadata();
   if (!width || !height) throw new Error(`Cannot read dimensions of ${mascotPath}`);
@@ -77,48 +44,26 @@ async function padToWidescreen(mascotPath: string): Promise<string> {
   return padded.toString("base64");
 }
 
-async function encodeMascot(mascotPath: string, wide: boolean): Promise<string> {
+export async function encodeMascot(mascotPath: string, wide: boolean): Promise<string> {
   if (wide) return padToWidescreen(mascotPath);
   return fs.readFileSync(mascotPath).toString("base64");
 }
 
-async function generateSingle(
-  prompt: string,
-  mascotPath: string,
-  seed: number,
-  wide: boolean,
-): Promise<Buffer> {
-  const mascotBase64 = await encodeMascot(mascotPath, wide);
+// Backend factory
 
-  const body = {
-    input: {
-      prompt,
-      image: `data:image/png;base64,${mascotBase64}`,
-      seed,
-      output_format: "png",
-    },
-  };
-
-  console.log(`    Submitting job to RunPod Hub ...`);
-  const { id: jobId } = await runpodRequest("/run", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-
-  console.log(`    Job ${jobId} queued, polling for result ...`);
-  const result = await pollUntilCompleted(jobId);
-
-  const imageUrl = result.output.result;
-  console.log(`    Downloading result image ...`);
-  const imageRes = await fetch(imageUrl);
-  if (!imageRes.ok) {
-    throw new Error(`Failed to download image: ${imageRes.status}`);
+export function createImageBackend(model: ImageModel): ImageBackend {
+  switch (model) {
+    case "qwen": return createQwenBackend();
+    case "nano-banana": return createNanoBananaBackend();
+    default: throw new Error(`Unknown image model "${model}". Choose "qwen" or "nano-banana".`);
   }
-  return Buffer.from(await imageRes.arrayBuffer());
 }
+
+// Orchestration
 
 export async function generateSingleImage(
   options: SingleImageOptions,
+  backend: ImageBackend,
 ): Promise<string> {
   const { prompt, mascotPath, outputDir, filename, seed, wide = false } = options;
 
@@ -126,7 +71,7 @@ export async function generateSingleImage(
 
   console.log(`  Generating ${filename} (seed: ${seed}) ...`);
 
-  const pngBuffer = await generateSingle(prompt, mascotPath, seed, wide);
+  const pngBuffer = await backend.generate({ prompt, mascotPath, seed, wide });
 
   const outputPath = path.join(outputDir, filename);
   fs.writeFileSync(outputPath, pngBuffer);
@@ -137,6 +82,7 @@ export async function generateSingleImage(
 
 export async function generateImages(
   options: GenerateImageOptions,
+  backend: ImageBackend,
 ): Promise<string[]> {
   const { prompt, mascotPath, outputDir, filenamePrefix } = options;
 
@@ -155,7 +101,7 @@ export async function generateImages(
         outputDir,
         filename: `${filenamePrefix}${suffix}.png`,
         seed: seeds[i],
-      }),
+      }, backend),
     ),
   );
 

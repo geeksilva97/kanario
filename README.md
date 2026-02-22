@@ -1,6 +1,6 @@
 # Kanario
 
-Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via Qwen Image Edit on RunPod.
+Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via an image backend (Qwen Image Edit on RunPod or Nano Banana on Vertex AI).
 
 Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/pick`). Both interfaces use the same underlying workflows.
 
@@ -8,7 +8,7 @@ Given a post ID (or URL), the CLI:
 
 1. Fetches the draft from WordPress REST API
 2. Sends the content to an LLM (Gemini by default, or Claude), which generates 3 scene descriptions
-3. Submits all 6 image jobs in parallel (3 prompts x 2 seeds) to Qwen Image Edit on RunPod Hub (~50s total)
+3. Submits all 6 image jobs in parallel (3 prompts x 2 seeds) to the chosen image backend (Qwen on RunPod or Nano Banana on Vertex AI)
 4. Saves everything to `output/<post-id>/`
 
 Once you've picked a favorite, the `pick` subcommand uploads it to WordPress and sets it as the post's featured image.
@@ -27,9 +27,9 @@ cp .env.example .env  # fill in credentials
 | `WP_URL` | WordPress site URL (default: `https://blog.codeminer42.com`) |
 | `WP_USERNAME` | WordPress username |
 | `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) |
-| `GEMINI_API_KEY` | Google Vertex AI API key (default model — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
+| `GEMINI_API_KEY` | Google Vertex AI API key (default model + Nano Banana image backend — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (only needed with `--model claude`) |
-| `RUNPOD_API_KEY` | RunPod API key (from [runpod.io](https://www.runpod.io/) account settings) |
+| `RUNPOD_API_KEY` | RunPod API key (only needed with `--image-model qwen`, the default — from [runpod.io](https://www.runpod.io/) account settings) |
 | `DISCORD_TOKEN` | Discord bot token (only needed for Discord bot) |
 | `DISCORD_PUBLIC_KEY` | Discord application public key (only needed for Discord bot) |
 | `DISCORD_APPLICATION_ID` | Discord application ID (only needed for Discord bot) |
@@ -53,7 +53,7 @@ Your user must have **Editor** or **Administrator** role to access draft posts v
 ### Generate thumbnails
 
 ```bash
-./kanario <post-id-or-url> [--model gemini|claude] [--no-wide] [--hint <text>]
+./kanario <post-id-or-url> [--model gemini|claude] [--image-model qwen|nano-banana] [--no-wide] [--hint <text>]
 ```
 
 Options:
@@ -61,6 +61,7 @@ Options:
 | Flag | Description |
 |---|---|
 | `--model` | LLM for prompt generation: `gemini` (default) or `claude` |
+| `--image-model` | Image generation backend: `qwen` (default, RunPod) or `nano-banana` (Vertex AI) |
 | `--no-wide` | Disable 16:9 padding, output matches mascot aspect ratio (square) |
 | `--hint` | Guide the visual metaphor (e.g. `"two models competing side by side"`) |
 | `-h, --help` | Show help |
@@ -71,7 +72,7 @@ Examples:
 ./kanario 12487
 ./kanario 12487 --no-wide
 ./kanario 12487 --model claude
-./kanario 12487 --hint "versus scene, two robots facing off"
+./kanario 12487 --image-model nano-banana
 ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
 ./kanario "https://blog.codeminer42.com/some-post-slug/"
 ```
@@ -135,7 +136,7 @@ npm run server
 
 | Command | Description |
 |---|---|
-| `/generate post_id [model] [hint]` | Generate 6 thumbnail images for a WordPress post (accepts ID, wp-admin URL, or published URL) |
+| `/generate post_id [model] [image_model] [hint]` | Generate 6 thumbnail images for a WordPress post (accepts ID, wp-admin URL, or published URL) |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (accepts ID, wp-admin URL, or published URL) |
 
 Both commands respond with a deferred message, then edit it with the result once the workflow completes.
@@ -282,4 +283,5 @@ npm test
 - Two LLM SDKs: `@google/genai` (Gemini via Vertex AI), `@anthropic-ai/sdk` (Claude)
 - `sharp` for image processing (padding mascot to widescreen canvas)
 - `fastify` for the Discord bot HTTP server (Ed25519 signature verification via Node built-in `crypto.subtle`)
-- RunPod Hub serverless endpoint for Qwen Image Edit (no custom infra)
+- RunPod Hub serverless endpoint for Qwen Image Edit (default image backend)
+- Nano Banana (Gemini 2.5 Flash Image) via Vertex AI Express API (alternative image backend, reuses `GEMINI_API_KEY`)
