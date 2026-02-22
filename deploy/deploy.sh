@@ -33,6 +33,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --memory 512Mi \
   --cpu 1 \
   --timeout 300 \
+  --no-cpu-throttling \
   --min-instances 0 \
   --max-instances 3
 
