@@ -67,7 +67,7 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
                   scene_description: {
                     type: "string",
                     description:
-                      "2-3 sentences (under 40 words). When mascot is 'miner' or 'hat', place the mascot and props in a scene with camera-relative depth using 'a small mascot from the reference image'. When mascot is 'none', describe only the scene and props — no characters.",
+                      "2-3 sentences (under 60 words). When mascot is 'miner' or 'hat', place the mascot and props in a scene with camera-relative depth using 'the mascot from the reference image'. Use 'a cute round-bodied bot buddy with big eyes and a small antenna' for secondary characters (never 'robot'). When mascot is 'none', start with 'Ignore the reference image.' then describe only the scene and props — no characters.",
                   },
                 },
                 required: ["scene", "mascot", "background", "scene_description"],
