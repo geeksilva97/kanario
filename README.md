@@ -124,13 +124,14 @@ The same generate and pick workflows are available as Discord slash commands, so
 npm run discord:register
 ```
 
-7. Start the server:
+7. Start the server locally (for development) or deploy to Cloud Run (for production):
 
 ```bash
-npm run server
+npm run server                                    # local
+GCP_PROJECT_ID=your-project ./deploy/deploy.sh    # Cloud Run
 ```
 
-8. Set the **Interactions Endpoint URL** in the Discord developer portal to your server's public URL + `/interactions` (e.g. `https://your-server.com/interactions`)
+8. Set the **Interactions Endpoint URL** in the Discord developer portal to the Cloud Run service URL + `/interactions` (see [Deployment](#deployment-cloud-run))
 
 ### Commands
 
@@ -146,6 +147,69 @@ Both commands respond with a deferred message, then edit it with the result once
 ```
 GET /health → { "status": "ok" }
 ```
+
+## Deployment (Cloud Run)
+
+The Discord bot runs on Google Cloud Run so it's always available at a public HTTPS URL for Discord interaction webhooks.
+
+### Prerequisites
+
+- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`) installed and authenticated
+- A GCP project with Cloud Run and Artifact Registry APIs enabled
+- An Artifact Registry Docker repository named `kanario` in your region:
+
+```bash
+gcloud artifacts repositories create kanario \
+  --repository-format=docker \
+  --location=southamerica-east1 \
+  --project=edy-ai-playground
+```
+
+### Build and deploy
+
+```bash
+GCP_PROJECT_ID=edy-ai-playground ./deploy/deploy.sh
+```
+
+The script builds the Docker image via Cloud Build, pushes it to Artifact Registry, and deploys to Cloud Run. It prints the service URL when done.
+
+Optional env vars:
+- `GCP_REGION` — Cloud Run region (default: `southamerica-east1`)
+
+### Set secrets
+
+After the first deploy, set the required environment variables on the Cloud Run service:
+
+```bash
+gcloud run services update kanario-discord \
+  --region southamerica-east1 \
+  --set-env-vars "WP_USERNAME=...,WP_APP_PASSWORD=...,GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=..."
+```
+
+For production, consider using [GCP Secret Manager](https://cloud.google.com/run/docs/configuring/secrets) with the `--set-secrets` flag instead.
+
+### Configure Discord
+
+Set the **Interactions Endpoint URL** in the [Discord developer portal](https://discord.com/developers/applications) to:
+
+```
+https://kanario-discord-740315580644.southamerica-east1.run.app/interactions
+```
+
+Discord will send a PING to verify the endpoint responds with PONG before saving.
+
+> **Current service URL:** `https://kanario-discord-740315580644.southamerica-east1.run.app`
+
+### Service settings
+
+| Setting | Value |
+|---|---|
+| Memory | 512 Mi |
+| CPU | 1 |
+| Timeout | 300s |
+| Min instances | 0 (scales to zero) |
+| Max instances | 3 |
+| Port | 8080 |
 
 ## RunPod Hub API (qwen-image-edit)
 

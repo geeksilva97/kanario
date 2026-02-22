@@ -22,11 +22,21 @@ npm run server
 
 # Register Discord slash commands
 npm run discord:register
+
+# Deploy Discord bot to Cloud Run
+GCP_PROJECT_ID=edy-ai-playground ./deploy/deploy.sh
+
+# Set secrets on Cloud Run (after first deploy)
+gcloud run services update kanario-discord \
+  --region southamerica-east1 \
+  --set-env-vars "WP_USERNAME=...,WP_APP_PASSWORD=...,GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=..."
 ```
 
 ## Architecture
 
 ```
+deploy/
+└── deploy.sh                 # Build, push, and deploy Discord bot to Cloud Run
 src/
 ├── index.ts                  # CLI entry point, parseArgs
 ├── config.ts                 # Env vars, mascot paths, style template, constants
