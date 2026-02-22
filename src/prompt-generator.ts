@@ -89,11 +89,8 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
 ## Title (derive your core metaphor from this)
 ${post.title}
 
-## Excerpt
-${post.excerpt}
-
-## Content (supporting detail only — don't let it override the title's story)
-${post.content.slice(0, 4000)}${hint ? `\n\nCreative direction from the author: ${hint}` : ""}`,
+## Key points (summarized from the full article)
+${post.summary ?? post.content.slice(0, 4000)}${hint ? `\n\nCreative direction from the author: ${hint}` : ""}`,
       },
     ],
   });

@@ -5,6 +5,7 @@ import { fetchDraft } from "../wordpress.ts";
 import { generatePrompts as claudeGeneratePrompts, type ImagePrompt } from "../prompt-generator.ts";
 import { generatePrompts as geminiGeneratePrompts } from "../gemini-generator.ts";
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
+import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
 
 export interface GenerateOptions {
@@ -51,14 +52,19 @@ export async function generateWorkflow(
   const generatePrompts = model === "gemini" ? geminiGeneratePrompts : claudeGeneratePrompts;
 
   // Step 1: Fetch WordPress draft
-  log(`[1/4] Fetching post ${postId} from ${config.wpUrl} ...`);
+  log(`[1/5] Fetching post ${postId} from ${config.wpUrl} ...`);
   const post = await fetchDraft(postId);
   log(`  Title: ${post.title}`);
   log(`  Content length: ${post.content.length} chars`);
 
-  // Step 2: Generate image prompts via LLM
+  // Step 2: Summarize post content
   const modelLabel = model === "gemini" ? "Gemini" : "Claude";
-  log(`[2/4] Generating image prompts via ${modelLabel} ...`);
+  log(`[2/5] Summarizing post via ${modelLabel} ...`);
+  post.summary = await summarizePost(post, model);
+  log(`  Summary: ${post.summary.length} chars`);
+
+  // Step 3: Generate image prompts via LLM
+  log(`[3/5] Generating image prompts via ${modelLabel} ...`);
   if (hint) log(`  Hint: "${hint}"`);
   const result = await generatePrompts(post, hint);
   log(`  Generated ${result.prompts.length} prompts:`);
@@ -66,9 +72,9 @@ export async function generateWorkflow(
     log(`  ${i + 1}. ${p.scene}`);
   }
 
-  // Step 3: Generate images
+  // Step 4: Generate images
   const imageLabel = imageModel === "nano-banana" ? "Nano Banana" : "Qwen Image Edit";
-  log(`[3/4] Generating images via ${imageLabel} (${wide ? "wide" : "square"}) ...`);
+  log(`[4/5] Generating images via ${imageLabel} (${wide ? "wide" : "square"}) ...`);
   const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, postId);
 
   const jobs = result.prompts.map((prompt, i) => {
@@ -97,8 +103,8 @@ export async function generateWorkflow(
     concurrency,
   );
 
-  // Step 4: Save prompts.json
-  log(`[4/4] Saving metadata ...`);
+  // Step 5: Save prompts.json
+  log(`[5/5] Saving metadata ...`);
   const metadata = {
     post_title: post.title,
     generated_at: new Date().toISOString(),

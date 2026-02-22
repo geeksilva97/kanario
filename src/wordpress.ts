@@ -5,6 +5,7 @@ export interface WPPost {
   title: string;
   content: string;
   excerpt: string;
+  summary?: string;
 }
 
 export function stripHtml(html: string): string {

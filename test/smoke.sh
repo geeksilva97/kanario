@@ -16,6 +16,10 @@ POSTS=(
   "12147|hamilton|Women in Tech: Margaret Hamilton"
   # business / disruption narrative
   "12195|tailwind|How AI Wiped Out 80% of Tailwind's Revenue"
+  # conceptual / opinion
+  "12518|agentic|Agentic Engineering Is Just Good Engineering (With a Better Driver)"
+  # hands-on Ruby
+  "12262|activejob|Everything you should know about Background Jobs with ActiveJob"
 )
 
 echo "=== Smoke test: ${#POSTS[@]} posts → ${BASE_DIR} ==="

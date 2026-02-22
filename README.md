@@ -7,9 +7,10 @@ Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/pick`). Bo
 Given a post ID (or URL), the CLI:
 
 1. Fetches the draft from WordPress REST API
-2. Sends the content to an LLM (Gemini by default, or Claude), which generates scene descriptions — the LLM decides per scene whether a mascot character fits or if a scene-only diorama works better
-3. Submits image jobs (1 per prompt) to the chosen image backend (Qwen on RunPod or Nano Banana on Vertex AI)
-4. Saves everything to `output/<post-id>/`
+2. Summarizes the full post content via a fast LLM (Gemini Flash or Claude Haiku) to extract key points
+3. Sends the summary to an LLM (Gemini by default, or Claude), which generates scene descriptions — the LLM decides per scene whether a mascot character fits or if a scene-only diorama works better
+4. Submits image jobs (1 per prompt) to the chosen image backend (Qwen on RunPod or Nano Banana on Vertex AI)
+5. Saves everything to `output/<post-id>/`
 
 Once you've picked a favorite, the `pick` subcommand uploads it to WordPress and sets it as the post's featured image.
 

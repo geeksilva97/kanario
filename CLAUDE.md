@@ -33,6 +33,7 @@ src/
 ├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml
 ├── prompt-generator.ts       # Claude prompt generation, shared SYSTEM_PROMPT + buildFullPrompt
 ├── gemini-generator.ts       # Gemini prompt generation via @google/genai (Vertex AI Express)
+├── summarizer.ts             # Pre-prompt summarization: extracts key points via LLM (Gemini or Claude)
 ├── image-backend.ts          # ImageBackend interface + ImageModel type
 ├── image-generator.ts        # Orchestrator: generateSingleImage, createImageBackend factory, shared utils
 ├── qwen-backend.ts           # Qwen Image Edit on RunPod Hub (async submit → poll → download)
@@ -65,6 +66,7 @@ src/
 - **Mascot is optional per scene** — the LLM decides independently for each scene whether a mascot fits (`miner`, `hat`) or a scene-only diorama works better (`none`). When `none`, Qwen gets a blank white canvas (required field), Nano Banana gets text-only content.
 - **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.
 - **Nano Banana** runs with concurrency 1 and exponential backoff retry (5s initial, up to 6 retries) to handle Vertex AI rate limits.
+- **Post summarization** — before prompt generation, the full post content is summarized via a fast LLM (`gemini-2.5-flash` or `claude-haiku-4-5-20251001`, matching the `--model` flag). The summary replaces raw content in the user message sent to the prompt generator.
 - **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT` and `buildFullPrompt` from `prompt-generator.ts`. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
 - **Two mascots + none**: `miner` (mascot3d.png), `hat` (mascot-hat.png), or `none` (no mascot) — the LLM picks per prompt.
 - **Secondary characters** — use "cute round-bodied bot buddy" (never "robot" — Qwen confuses it with the mascot). Seed is `-1` (Qwen picks random).
