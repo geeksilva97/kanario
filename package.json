@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "start": "node --env-file=.env --experimental-strip-types src/index.ts",
-    "test": "node --experimental-strip-types --experimental-sqlite --test test/index.test.ts",
-    "test:coverage": "node --experimental-strip-types --experimental-sqlite --test --experimental-test-coverage test/index.test.ts",
+    "test": "node --experimental-strip-types --experimental-sqlite --test 'src/**/*.test.ts'",
+    "test:coverage": "node --experimental-strip-types --experimental-sqlite --test --experimental-test-coverage 'src/**/*.test.ts'",
     "test:integration": "node --env-file=.env.test --experimental-strip-types --test test/wordpress.integration.test.ts",
     "server": "node --env-file=.env --experimental-strip-types --experimental-sqlite src/discord/server.ts",
     "discord:register": "node --env-file=.env --experimental-strip-types --experimental-sqlite src/discord/register.ts"

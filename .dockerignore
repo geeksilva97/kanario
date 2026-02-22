@@ -5,4 +5,5 @@ output/
 .git/
 server/
 test/
+**/*.test.ts
 .DS_Store

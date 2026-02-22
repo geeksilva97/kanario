@@ -99,7 +99,7 @@ src/
 
 ## Testing
 
-- All tests are in `test/index.test.ts` — run with `npm test`.
+- Tests are colocated as `*.test.ts` next to their source files (e.g. `src/wordpress.test.ts`) — run with `npm test`.
 - Tests are pure unit tests that don't require env vars or network access (mocked where needed).
 - Integration tests (`test/wordpress.integration.test.ts`) require `.env.test` and hit the real WP API.
 - **Smoke test** (`test/smoke.sh`) — generates thumbnails for 5 fixed posts in parallel, prints summary with mascot/none split, opens output folders. Run after changing `system.md` or generators to evaluate prompt quality visually.
