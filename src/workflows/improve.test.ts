@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import fs from "node:fs";
@@ -6,42 +6,37 @@ import os from "node:os";
 import { nextPromptNumber, improveWorkflow } from "./improve.ts";
 
 describe("nextPromptNumber", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-test-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
   it("returns 1 when directory does not exist", () => {
     assert.equal(nextPromptNumber("/nonexistent/dir"), 1);
   });
 
   it("returns 1 when directory is empty", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-test-"));
-    try {
-      assert.equal(nextPromptNumber(dir), 1);
-    } finally {
-      fs.rmSync(dir, { recursive: true });
-    }
+    assert.equal(nextPromptNumber(tmpDir), 1);
   });
 
   it("returns next number after existing files", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-test-"));
-    try {
-      fs.writeFileSync(path.join(dir, "prompt-1.png"), "");
-      fs.writeFileSync(path.join(dir, "prompt-2.png"), "");
-      fs.writeFileSync(path.join(dir, "prompt-5.png"), "");
-      fs.writeFileSync(path.join(dir, "prompts.json"), "{}");
-      assert.equal(nextPromptNumber(dir), 6);
-    } finally {
-      fs.rmSync(dir, { recursive: true });
-    }
+    fs.writeFileSync(path.join(tmpDir, "prompt-1.png"), "");
+    fs.writeFileSync(path.join(tmpDir, "prompt-2.png"), "");
+    fs.writeFileSync(path.join(tmpDir, "prompt-5.png"), "");
+    fs.writeFileSync(path.join(tmpDir, "prompts.json"), "{}");
+    assert.equal(nextPromptNumber(tmpDir), 6);
   });
 
   it("ignores non-matching files", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-test-"));
-    try {
-      fs.writeFileSync(path.join(dir, "prompt-3.png"), "");
-      fs.writeFileSync(path.join(dir, "prompt-2a.png"), "");
-      fs.writeFileSync(path.join(dir, "other.png"), "");
-      assert.equal(nextPromptNumber(dir), 4);
-    } finally {
-      fs.rmSync(dir, { recursive: true });
-    }
+    fs.writeFileSync(path.join(tmpDir, "prompt-3.png"), "");
+    fs.writeFileSync(path.join(tmpDir, "prompt-2a.png"), "");
+    fs.writeFileSync(path.join(tmpDir, "other.png"), "");
+    assert.equal(nextPromptNumber(tmpDir), 4);
   });
 });
 

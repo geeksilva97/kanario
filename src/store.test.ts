@@ -14,17 +14,13 @@ const fakeCreds: WPCredentials = {
 };
 
 describe("credential store", () => {
-  let dbPath: string;
-
   beforeEach(() => {
-    dbPath = path.join(os.tmpdir(), `kanario-test-${Date.now()}.db`);
     closeDb();
-    initDb(dbPath);
+    initDb(":memory:");
   });
 
   afterEach(() => {
     closeDb();
-    try { fs.unlinkSync(dbPath); } catch {}
   });
 
   it("saves and loads credentials", () => {
@@ -71,11 +67,26 @@ describe("credential store", () => {
   it("getCredentialInfo returns null for unknown user", () => {
     assert.equal(getCredentialInfo("unknown"), null);
   });
+});
+
+// Encryption tests need a file-based DB so a second connection can read raw values
+describe("credential store (encryption)", () => {
+  let dbPath: string;
+
+  beforeEach(() => {
+    dbPath = path.join(os.tmpdir(), `kanario-test-${Date.now()}.db`);
+    closeDb();
+    initDb(dbPath);
+  });
+
+  afterEach(() => {
+    closeDb();
+    fs.rmSync(dbPath, { force: true });
+  });
 
   it("encrypts password in DB and decrypts on load", () => {
     saveCredentials("user123", fakeCreds);
 
-    // Read raw DB to verify the password is not stored as plaintext
     const rawDb = new DatabaseSync(dbPath);
     const row = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user123'").get() as any;
     rawDb.close();
@@ -83,7 +94,6 @@ describe("credential store", () => {
     assert.notEqual(row.wp_app_password, fakeCreds.wpAppPassword);
     assert.ok(row.wp_app_password.includes(":"), "encrypted format should be iv:tag:data");
 
-    // loadCredentials should decrypt it back
     const loaded = loadCredentials("user123");
     assert.equal(loaded?.wpAppPassword, fakeCreds.wpAppPassword);
   });
