@@ -25,15 +25,16 @@ cp .env.example .env  # fill in credentials
 
 | Variable | Description |
 |---|---|
-| `WP_URL` | WordPress site URL (default: `https://blog.codeminer42.com`) |
-| `WP_USERNAME` | WordPress username |
-| `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) |
+| `WP_URL` | WordPress site URL (default: `https://blog.codeminer42.com`) — CLI only |
+| `WP_USERNAME` | WordPress username — CLI only |
+| `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) — CLI only |
 | `GEMINI_API_KEY` | Google Vertex AI API key (default model + Nano Banana image backend — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (only needed with `--model claude`) |
 | `RUNPOD_API_KEY` | RunPod API key (only needed with `--image-model qwen`, the default — from [runpod.io](https://www.runpod.io/) account settings) |
 | `DISCORD_TOKEN` | Discord bot token (only needed for Discord bot) |
 | `DISCORD_PUBLIC_KEY` | Discord application public key (only needed for Discord bot) |
 | `DISCORD_APPLICATION_ID` | Discord application ID (only needed for Discord bot) |
+| `CREDENTIAL_ENCRYPTION_KEY` | 32-byte hex key for AES-256-GCM encryption of stored WP passwords (Discord bot only, optional for local dev) |
 
 ### WordPress Application Password
 
@@ -133,14 +134,36 @@ GCP_PROJECT_ID=your-project ./deploy/deploy.sh    # Cloud Run
 
 8. Set the **Interactions Endpoint URL** in the Discord developer portal to the Cloud Run service URL + `/interactions` (see [Deployment](#deployment-cloud-run))
 
+### Per-user WordPress credentials
+
+The Discord bot uses **per-user WordPress credentials** — each team member registers their own WP credentials so actions are attributed correctly. The CLI continues using environment variables as before.
+
+**Registration flow:**
+
+1. DM the bot: `/register wp_url:https://blog.codeminer42.com username:your-wp-user app_password:xxxx xxxx xxxx`
+2. The bot validates the credentials against the WordPress API
+3. On success, credentials are stored (encrypted with AES-256-GCM if `CREDENTIAL_ENCRYPTION_KEY` is set)
+4. Now `/generate` and `/pick` use your credentials
+
+For security, `/register` must be used in a **DM with the bot** — it will reject the command if used in a channel (where the password would be visible to others).
+
+To generate an encryption key:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
 ### Commands
 
 | Command | Description |
 |---|---|
-| `/generate post_id [model] [image_model] [hint]` | Generate 4 thumbnail images for a WordPress post (accepts ID, wp-admin URL, or published URL) |
-| `/pick post_id image` | Upload an image and set it as the post's featured image (accepts ID, wp-admin URL, or published URL) |
+| `/register wp_url username app_password` | Register your WordPress credentials (DMs only) |
+| `/unregister` | Remove your stored WordPress credentials |
+| `/whoami` | Show your registered URL and username (no password) |
+| `/generate post_id [model] [image_model] [hint]` | Generate 4 thumbnail images for a WordPress post (requires registration) |
+| `/pick post_id image` | Upload an image and set it as the post's featured image (requires registration) |
 
-Both commands respond with a deferred message, then edit it with the result once the workflow completes.
+`/register`, `/unregister`, and `/whoami` responses are ephemeral (only visible to you). `/generate` and `/pick` respond with a deferred message, then edit it with the result once the workflow completes.
 
 ### Health check
 
@@ -176,6 +199,19 @@ The script builds the Docker image via Cloud Build, pushes it to Artifact Regist
 Optional env vars:
 - `GCP_REGION` — Cloud Run region (default: `southamerica-east1`)
 
+### Credential storage (GCS FUSE)
+
+Per-user WordPress credentials are stored in a SQLite database. On Cloud Run, the DB file lives on a GCS bucket mounted via Cloud Storage FUSE.
+
+One-time setup:
+
+```bash
+# Create the bucket
+gcloud storage buckets create gs://kanario-credentials --location=southamerica-east1
+```
+
+The `deploy.sh` script automatically mounts the bucket at `/app/data/` using `--add-volume` and `--add-volume-mount` flags.
+
 ### Set secrets
 
 After the first deploy, set the required environment variables on the Cloud Run service:
@@ -183,8 +219,10 @@ After the first deploy, set the required environment variables on the Cloud Run 
 ```bash
 gcloud run services update kanario-discord \
   --region southamerica-east1 \
-  --set-env-vars "WP_USERNAME=...,WP_APP_PASSWORD=...,GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=..."
+  --set-env-vars "GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=...,CREDENTIAL_ENCRYPTION_KEY=..."
 ```
+
+Note: `WP_USERNAME` and `WP_APP_PASSWORD` are no longer needed on the Discord bot — each user registers their own credentials via `/register`.
 
 For production, consider using [GCP Secret Manager](https://cloud.google.com/run/docs/configuring/secrets) with the `--set-secrets` flag instead.
 
@@ -345,7 +383,7 @@ npm test              # unit tests (no network, no .env)
 
 ## Stack
 
-- Node.js >= 22 (native fetch, `--experimental-strip-types`, `node:test`)
+- Node.js >= 22 (native fetch, `--experimental-strip-types`, `--experimental-sqlite`, `node:test`)
 - Two LLM SDKs: `@google/genai` (Gemini via Vertex AI), `@anthropic-ai/sdk` (Claude)
 - `sharp` for image processing (padding mascot to widescreen canvas)
 - `fastify` for the Discord bot HTTP server (Ed25519 signature verification via Node built-in `crypto.subtle`)

@@ -29,18 +29,20 @@ GCP_PROJECT_ID=edy-ai-playground ./deploy/deploy.sh
 # Set secrets on Cloud Run (after first deploy)
 gcloud run services update kanario-discord \
   --region southamerica-east1 \
-  --set-env-vars "WP_USERNAME=...,WP_APP_PASSWORD=...,GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=..."
+  --set-env-vars "GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=...,CREDENTIAL_ENCRYPTION_KEY=..."
 ```
 
 ## Architecture
 
 ```
 deploy/
-└── deploy.sh                 # Build, push, and deploy Discord bot to Cloud Run
+└── deploy.sh                 # Build, push, and deploy Discord bot to Cloud Run (includes GCS FUSE mount)
 src/
 ├── index.ts                  # CLI entry point, parseArgs
 ├── config.ts                 # Env vars, mascot paths, style template, constants
-├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml
+├── credentials.ts            # WPCredentials interface, validateWPCredentials, credentialsFromEnv
+├── store.ts                  # SQLite-backed credential store with AES-256-GCM encryption (node:sqlite)
+├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml (all take WPCredentials)
 ├── prompt-generator.ts       # Claude prompt generation, shared SYSTEM_PROMPT + buildFullPrompt
 ├── gemini-generator.ts       # Gemini prompt generation via @google/genai (Vertex AI Express)
 ├── summarizer.ts             # Pre-prompt summarization: extracts key points via LLM (Gemini or Claude)
@@ -48,6 +50,8 @@ src/
 ├── image-generator.ts        # Orchestrator: generateSingleImage, createImageBackend factory, shared utils
 ├── qwen-backend.ts           # Qwen Image Edit on RunPod Hub (async submit → poll → download)
 ├── nano-banana-backend.ts    # Gemini 2.5 Flash Image on Vertex AI (synchronous, returns base64)
+├── types/
+│   └── sqlite.d.ts           # Type declarations for node:sqlite (experimental)
 ├── commands/
 │   ├── generate.ts           # CLI generate command handler
 │   └── pick.ts               # CLI pick command handler
@@ -62,7 +66,7 @@ src/
 
 ## Code conventions
 
-- **TypeScript with `--experimental-strip-types`** — no build step, Node runs `.ts` directly. Use `.ts` extensions in all imports.
+- **TypeScript with `--experimental-strip-types`** — no build step, Node runs `.ts` directly. Use `.ts` extensions in all imports. Also uses `--experimental-sqlite` for `node:sqlite`.
 - **`verbatimModuleSyntax`** — use `import type` for type-only imports.
 - **Node.js built-in test runner** (`node:test` + `node:assert/strict`) — no Jest/Vitest.
 - **ESM only** (`"type": "module"` in package.json).
@@ -72,6 +76,8 @@ src/
 
 ## Key patterns
 
+- **Per-user WordPress credentials** — Discord bot users register their own WP credentials via `/register` (validated against WP API, stored in SQLite with AES-256-GCM encryption). CLI uses env vars via `credentialsFromEnv()`. All WP functions take `WPCredentials` as first parameter.
+- **Credential storage** — `node:sqlite` (experimental, `--experimental-sqlite` flag) with SQLite file at `/app/data/credentials.db` (production, GCS FUSE mount) or `./data/credentials.db` (local dev). Encryption key from `CREDENTIAL_ENCRYPTION_KEY` env var; no-op if unset.
 - **Image backends implement `ImageBackend` interface** — `generate()` takes prompt + optional mascotPath + seed + wide, returns a PNG `Buffer`. Optional `maxConcurrency` limits parallel jobs.
 - **Mascot is optional per scene** — the LLM decides independently for each scene whether a mascot fits (`miner`, `hat`) or a scene-only diorama works better (`none`). When `none`, Qwen gets a blank white canvas (required field), Nano Banana gets text-only content.
 - **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.

@@ -1,4 +1,5 @@
 import type { ImageModel } from "../image-backend.ts";
+import { credentialsFromEnv } from "../credentials.ts";
 import { resolvePostId } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 
@@ -6,7 +7,13 @@ export async function generate(
   positionals: string[],
   values: { hint?: string; model?: string; "image-model"?: string; output?: string; wide?: boolean; "no-wide"?: boolean },
 ) {
-  const postId = await resolvePostId(positionals[0]);
+  const creds = credentialsFromEnv();
+  if (!creds.wpUsername || !creds.wpAppPassword) {
+    console.error("Missing WP_USERNAME or WP_APP_PASSWORD environment variables.");
+    process.exit(1);
+  }
+
+  const postId = await resolvePostId(creds, positionals[0]);
   const model = values.model as string;
   const imageModel = (values["image-model"] || "qwen") as ImageModel;
   const outputDir = values.output;
@@ -25,7 +32,7 @@ export async function generate(
 
   try {
     const result = await generateWorkflow(
-      { postId, model, imageModel, outputDir, wide, hint },
+      { creds, postId, model, imageModel, outputDir, wide, hint },
       (msg) => console.log(msg),
     );
     console.log(`\nDone! Generated ${result.imagePaths.length} images in ${result.outputDir}`);

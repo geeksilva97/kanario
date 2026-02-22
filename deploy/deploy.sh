@@ -35,7 +35,9 @@ gcloud run deploy "$SERVICE_NAME" \
   --timeout 300 \
   --no-cpu-throttling \
   --min-instances 0 \
-  --max-instances 3
+  --max-instances 3 \
+  --add-volume name=creds-vol,type=cloud-storage,bucket=kanario-credentials \
+  --add-volume-mount volume=creds-vol,mount-path=/app/data
 
 echo ""
 echo "Service URL:"

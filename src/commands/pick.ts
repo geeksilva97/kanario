@@ -1,6 +1,7 @@
 import path from "node:path";
 import readline from "node:readline/promises";
 import { OUTPUT_DIR } from "../config.ts";
+import { credentialsFromEnv } from "../credentials.ts";
 import { fetchDraft, resolvePostId } from "../wordpress.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 
@@ -21,11 +22,17 @@ export async function pick(positionals: string[]) {
     process.exit(1);
   }
 
-  const postId = await resolvePostId(rawPostId);
+  const creds = credentialsFromEnv();
+  if (!creds.wpUsername || !creds.wpAppPassword) {
+    console.error("Missing WP_USERNAME or WP_APP_PASSWORD environment variables.");
+    process.exit(1);
+  }
+
+  const postId = await resolvePostId(creds, rawPostId);
   const imagePath = resolveImagePath(postId, imageArg);
 
   // Fetch post title for confirmation display
-  const post = await fetchDraft(postId);
+  const post = await fetchDraft(creds, postId);
 
   console.log(`\n  Post:  ${post.title}`);
   console.log(`  Image: ${imagePath}`);
@@ -41,7 +48,7 @@ export async function pick(positionals: string[]) {
 
   try {
     console.log(`\nUploading ${path.basename(imagePath)} ...`);
-    const result = await pickWorkflow({ postId, imagePath });
+    const result = await pickWorkflow({ creds, postId, imagePath });
     console.log(`  Media ID: ${result.mediaId}`);
     console.log(`\nDone! Featured image set for "${post.title}".`);
     process.exit(0);

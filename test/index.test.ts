@@ -1,6 +1,8 @@
-import { describe, it, mock } from "node:test";
+import { describe, it, mock, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
 import { stripHtml, parsePostId, resolvePostId } from "../src/wordpress.ts";
 import { PROMPT_TEMPLATE, BACKGROUND_COLORS, config, PROJECT_ROOT, OUTPUT_DIR } from "../src/config.ts";
 import { buildFullPrompt } from "../src/prompt-generator.ts";
@@ -12,6 +14,15 @@ import { createImageBackend } from "../src/image-generator.ts";
 import { createQwenBackend } from "../src/qwen-backend.ts";
 import { createNanoBananaBackend } from "../src/nano-banana-backend.ts";
 import { summarizePost } from "../src/summarizer.ts";
+import { validateWPCredentials, credentialsFromEnv } from "../src/credentials.ts";
+import type { WPCredentials } from "../src/credentials.ts";
+import { initDb, closeDb, saveCredentials, loadCredentials, deleteCredentials, getCredentialInfo } from "../src/store.ts";
+
+const fakeCreds: WPCredentials = {
+  wpUrl: "https://blog.codeminer42.com",
+  wpUsername: "testuser",
+  wpAppPassword: "xxxx xxxx xxxx",
+};
 
 describe("stripHtml", () => {
   it("removes HTML tags", () => {
@@ -104,12 +115,13 @@ describe("parsePostId", () => {
 
 describe("resolvePostId", () => {
   it("returns a plain numeric ID without making HTTP calls", async () => {
-    const result = await resolvePostId("12487");
+    const result = await resolvePostId(fakeCreds, "12487");
     assert.equal(result, "12487");
   });
 
   it("extracts post ID from a wp-admin edit URL without HTTP calls", async () => {
     const result = await resolvePostId(
+      fakeCreds,
       "https://blog.codeminer42.com/wp-admin/post.php?post=12518&action=edit",
     );
     assert.equal(result, "12518");
@@ -120,7 +132,7 @@ describe("resolvePostId", () => {
       Promise.resolve(new Response(JSON.stringify([{ id: 99 }]), { status: 200 })),
     );
 
-    const result = await resolvePostId("https://blog.codeminer42.com/some-slug/");
+    const result = await resolvePostId(fakeCreds, "https://blog.codeminer42.com/some-slug/");
     assert.equal(result, "99");
     assert.equal(mockFetch.mock.callCount(), 1);
     const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
@@ -133,7 +145,7 @@ describe("resolvePostId", () => {
     );
 
     await assert.rejects(
-      () => resolvePostId("https://blog.codeminer42.com/nonexistent-post/"),
+      () => resolvePostId(fakeCreds, "https://blog.codeminer42.com/nonexistent-post/"),
       { message: /No post found with slug "nonexistent-post"/ },
     );
   });
@@ -143,7 +155,7 @@ describe("resolvePostId", () => {
       Promise.resolve(new Response(JSON.stringify([{ id: 42 }]), { status: 200 })),
     );
 
-    const result = await resolvePostId("https://blog.codeminer42.com/my-post/");
+    const result = await resolvePostId(fakeCreds, "https://blog.codeminer42.com/my-post/");
     assert.equal(result, "42");
     const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
     assert.ok(calledUrl.includes("slug=my-post"));
@@ -155,7 +167,7 @@ describe("resolvePostId", () => {
       Promise.resolve(new Response(JSON.stringify([{ id: 77 }]), { status: 200 })),
     );
 
-    const result = await resolvePostId("https://blog.codeminer42.com/category/post-slug/");
+    const result = await resolvePostId(fakeCreds, "https://blog.codeminer42.com/category/post-slug/");
     assert.equal(result, "77");
     const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
     assert.ok(calledUrl.includes("slug=category%2Fpost-slug"));
@@ -163,7 +175,7 @@ describe("resolvePostId", () => {
 
   it("throws for a bare slug without URL scheme", async () => {
     await assert.rejects(
-      () => resolvePostId("just-a-slug"),
+      () => resolvePostId(fakeCreds, "just-a-slug"),
       { message: /Cannot resolve post from input: just-a-slug/ },
     );
   });
@@ -293,7 +305,7 @@ describe("prompt structure validation", () => {
 describe("generateWorkflow", () => {
   it("throws on invalid model", async () => {
     await assert.rejects(
-      () => generateWorkflow({ postId: "123", model: "gpt4" as any, wide: true }),
+      () => generateWorkflow({ creds: fakeCreds, postId: "123", model: "gpt4" as any, wide: true }),
       { message: /Unknown model "gpt4"/ },
     );
   });
@@ -302,7 +314,7 @@ describe("generateWorkflow", () => {
 describe("pickWorkflow", () => {
   it("throws when file does not exist", async () => {
     await assert.rejects(
-      () => pickWorkflow({ postId: "123", imagePath: "/nonexistent/image.png" }),
+      () => pickWorkflow({ creds: fakeCreds, postId: "123", imagePath: "/nonexistent/image.png" }),
       { message: /Image not found: \/nonexistent\/image\.png/ },
     );
   });
@@ -396,5 +408,107 @@ describe("ImageBackend", () => {
       () => createImageBackend("invalid" as any),
       { message: /Unknown image model "invalid"/ },
     );
+  });
+});
+
+describe("validateWPCredentials", () => {
+  it("returns valid with displayName on 200 response", async (t) => {
+    t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response(JSON.stringify({ name: "Editor User" }), { status: 200 })),
+    );
+
+    const result = await validateWPCredentials(fakeCreds);
+    assert.equal(result.valid, true);
+    assert.equal(result.displayName, "Editor User");
+  });
+
+  it("returns invalid on 401 response", async (t) => {
+    t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response("Unauthorized", { status: 401, statusText: "Unauthorized" })),
+    );
+
+    const result = await validateWPCredentials(fakeCreds);
+    assert.equal(result.valid, false);
+    assert.ok(result.error?.includes("401"));
+  });
+
+  it("returns invalid on network error", async (t) => {
+    t.mock.method(globalThis, "fetch", () =>
+      Promise.reject(new Error("fetch failed")),
+    );
+
+    const result = await validateWPCredentials(fakeCreds);
+    assert.equal(result.valid, false);
+    assert.equal(result.error, "fetch failed");
+  });
+});
+
+describe("credentialsFromEnv", () => {
+  it("returns a WPCredentials object from config", () => {
+    const creds = credentialsFromEnv();
+    assert.equal(typeof creds.wpUrl, "string");
+    assert.equal(typeof creds.wpUsername, "string");
+    assert.equal(typeof creds.wpAppPassword, "string");
+    assert.equal(creds.wpUrl, config.wpUrl);
+  });
+});
+
+describe("credential store", () => {
+  let dbPath: string;
+
+  beforeEach(() => {
+    dbPath = path.join(os.tmpdir(), `kanario-test-${Date.now()}.db`);
+    closeDb();
+    initDb(dbPath);
+  });
+
+  afterEach(() => {
+    closeDb();
+    try { fs.unlinkSync(dbPath); } catch {}
+  });
+
+  it("saves and loads credentials", () => {
+    saveCredentials("user123", fakeCreds);
+    const loaded = loadCredentials("user123");
+    assert.deepEqual(loaded, fakeCreds);
+  });
+
+  it("returns null for unknown user", () => {
+    const loaded = loadCredentials("unknown");
+    assert.equal(loaded, null);
+  });
+
+  it("upserts on save", () => {
+    saveCredentials("user123", fakeCreds);
+    const updated = { ...fakeCreds, wpUsername: "newuser" };
+    saveCredentials("user123", updated);
+    const loaded = loadCredentials("user123");
+    assert.equal(loaded?.wpUsername, "newuser");
+  });
+
+  it("deletes credentials", () => {
+    saveCredentials("user123", fakeCreds);
+    const deleted = deleteCredentials("user123");
+    assert.equal(deleted, true);
+    assert.equal(loadCredentials("user123"), null);
+  });
+
+  it("returns false when deleting non-existent user", () => {
+    const deleted = deleteCredentials("unknown");
+    assert.equal(deleted, false);
+  });
+
+  it("getCredentialInfo returns URL and username without password", () => {
+    saveCredentials("user123", fakeCreds);
+    const info = getCredentialInfo("user123");
+    assert.ok(info);
+    assert.equal(info.wpUrl, fakeCreds.wpUrl);
+    assert.equal(info.wpUsername, fakeCreds.wpUsername);
+    assert.ok(info.registeredAt);
+    assert.equal((info as any).wpAppPassword, undefined);
+  });
+
+  it("getCredentialInfo returns null for unknown user", () => {
+    assert.equal(getCredentialInfo("unknown"), null);
   });
 });

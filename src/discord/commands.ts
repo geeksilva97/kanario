@@ -1,5 +1,8 @@
 import fs from "node:fs";
 import { config } from "../config.ts";
+import type { WPCredentials } from "../credentials.ts";
+import { validateWPCredentials } from "../credentials.ts";
+import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 import { resolveImagePath } from "../commands/pick.ts";
@@ -7,6 +10,10 @@ import { fetchDraft, resolvePostId } from "../wordpress.ts";
 
 // Discord interaction response types
 const DEFERRED_CHANNEL_MESSAGE = 5;
+const CHANNEL_MESSAGE = 4;
+
+// Ephemeral flag — only visible to the invoking user
+const EPHEMERAL = 64;
 
 // Slash command definitions (for registration)
 export const COMMAND_DEFINITIONS = [
@@ -63,6 +70,38 @@ export const COMMAND_DEFINITIONS = [
       },
     ],
   },
+  {
+    name: "register",
+    description: "Register your WordPress credentials (use in DMs for security)",
+    options: [
+      {
+        name: "wp_url",
+        description: "WordPress site URL (e.g. https://blog.codeminer42.com)",
+        type: 3, // STRING
+        required: true,
+      },
+      {
+        name: "username",
+        description: "WordPress username",
+        type: 3, // STRING
+        required: true,
+      },
+      {
+        name: "app_password",
+        description: "WordPress application password",
+        type: 3, // STRING
+        required: true,
+      },
+    ],
+  },
+  {
+    name: "unregister",
+    description: "Remove your stored WordPress credentials",
+  },
+  {
+    name: "whoami",
+    description: "Show your registered WordPress credentials (no password)",
+  },
 ];
 
 function getOptionValue(interaction: any, name: string): string | undefined {
@@ -71,9 +110,17 @@ function getOptionValue(interaction: any, name: string): string | undefined {
   return opt?.value;
 }
 
+function getUserId(interaction: any): string {
+  return interaction.member?.user?.id || interaction.user?.id || "";
+}
+
 function getUserMention(interaction: any): string {
-  const userId = interaction.member?.user?.id || interaction.user?.id;
+  const userId = getUserId(interaction);
   return userId ? `<@${userId}>` : "";
+}
+
+function isInGuild(interaction: any): boolean {
+  return !!interaction.guild_id;
 }
 
 async function editOriginalMessage(
@@ -137,19 +184,38 @@ async function editOriginalMessage(
   });
 }
 
+function requireCredentials(
+  interaction: any,
+): WPCredentials | null {
+  const userId = getUserId(interaction);
+  const creds = loadCredentials(userId);
+  return creds;
+}
+
 async function handleGenerate(interaction: any) {
   const token = interaction.token;
+  const userId = getUserId(interaction);
   const rawPostId = getOptionValue(interaction, "post_id") || "";
   const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
   const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
   const hint = getOptionValue(interaction, "hint");
 
+  const creds = loadCredentials(userId);
+  if (!creds) {
+    const mention = getUserMention(interaction);
+    await editOriginalMessage(
+      token,
+      `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
+    );
+    return;
+  }
+
   try {
-    const postId = await resolvePostId(rawPostId);
+    const postId = await resolvePostId(creds, rawPostId);
     const progressMessages: string[] = [];
 
     const result = await generateWorkflow(
-      { postId, model, imageModel, wide: true, hint },
+      { creds, postId, model, imageModel, wide: true, hint },
       (msg) => progressMessages.push(msg),
     );
 
@@ -175,15 +241,26 @@ async function handleGenerate(interaction: any) {
 
 async function handlePick(interaction: any) {
   const token = interaction.token;
+  const userId = getUserId(interaction);
   const rawPostId = getOptionValue(interaction, "post_id") || "";
   const imageArg = getOptionValue(interaction, "image") || "";
 
-  try {
-    const postId = await resolvePostId(rawPostId);
-    const imagePath = resolveImagePath(postId, imageArg);
-    const post = await fetchDraft(postId);
+  const creds = loadCredentials(userId);
+  if (!creds) {
+    const mention = getUserMention(interaction);
+    await editOriginalMessage(
+      token,
+      `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
+    );
+    return;
+  }
 
-    const result = await pickWorkflow({ postId, imagePath });
+  try {
+    const postId = await resolvePostId(creds, rawPostId);
+    const imagePath = resolveImagePath(postId, imageArg);
+    const post = await fetchDraft(creds, postId);
+
+    const result = await pickWorkflow({ creds, postId, imagePath });
     const mention = getUserMention(interaction);
 
     await editOriginalMessage(
@@ -197,8 +274,116 @@ async function handlePick(interaction: any) {
   }
 }
 
+async function handleRegister(interaction: any): Promise<{ type: number; data: { content: string; flags: number } }> {
+  // Reject if used in a guild channel (password would be visible to others)
+  if (isInGuild(interaction)) {
+    return {
+      type: CHANNEL_MESSAGE,
+      data: {
+        content: "For security, please use `/register` in a **DM with me** — your app password would be visible to others in a channel.",
+        flags: EPHEMERAL,
+      },
+    };
+  }
+
+  const userId = getUserId(interaction);
+  const wpUrl = (getOptionValue(interaction, "wp_url") || "").replace(/\/+$/, "");
+  const username = getOptionValue(interaction, "username") || "";
+  const appPassword = getOptionValue(interaction, "app_password") || "";
+
+  if (!wpUrl || !username || !appPassword) {
+    return {
+      type: CHANNEL_MESSAGE,
+      data: {
+        content: "All fields are required: `wp_url`, `username`, `app_password`.",
+        flags: EPHEMERAL,
+      },
+    };
+  }
+
+  const creds: WPCredentials = {
+    wpUrl,
+    wpUsername: username,
+    wpAppPassword: appPassword,
+  };
+
+  const result = await validateWPCredentials(creds);
+  if (!result.valid) {
+    return {
+      type: CHANNEL_MESSAGE,
+      data: {
+        content: `WordPress authentication failed: ${result.error}\n\nPlease check your URL, username, and app password.`,
+        flags: EPHEMERAL,
+      },
+    };
+  }
+
+  saveCredentials(userId, creds);
+
+  return {
+    type: CHANNEL_MESSAGE,
+    data: {
+      content: `Registered successfully as **${result.displayName}** on \`${wpUrl}\`.`,
+      flags: EPHEMERAL,
+    },
+  };
+}
+
+function handleUnregister(interaction: any): { type: number; data: { content: string; flags: number } } {
+  const userId = getUserId(interaction);
+  const deleted = deleteCredentials(userId);
+
+  return {
+    type: CHANNEL_MESSAGE,
+    data: {
+      content: deleted
+        ? "Your WordPress credentials have been removed."
+        : "No credentials found — you weren't registered.",
+      flags: EPHEMERAL,
+    },
+  };
+}
+
+function handleWhoami(interaction: any): { type: number; data: { content: string; flags: number } } {
+  const userId = getUserId(interaction);
+  const info = getCredentialInfo(userId);
+
+  if (!info) {
+    return {
+      type: CHANNEL_MESSAGE,
+      data: {
+        content: "You haven't registered yet. Use `/register` in a DM with me.",
+        flags: EPHEMERAL,
+      },
+    };
+  }
+
+  return {
+    type: CHANNEL_MESSAGE,
+    data: {
+      content: `**WordPress credentials:**\nURL: \`${info.wpUrl}\`\nUsername: \`${info.wpUsername}\`\nRegistered: ${info.registeredAt}`,
+      flags: EPHEMERAL,
+    },
+  };
+}
+
 export function handleInteraction(body: any) {
   const commandName = body.data?.name;
+
+  // Synchronous commands — return immediate response
+  if (commandName === "register") {
+    // register is async (validates WP credentials) but we handle it inline
+    // since Discord needs a response within 3s and validation is fast
+    return handleRegister(body);
+  }
+
+  if (commandName === "unregister") {
+    return handleUnregister(body);
+  }
+
+  if (commandName === "whoami") {
+    return handleWhoami(body);
+  }
 
   // Fire-and-forget: run the handler without awaiting
   if (commandName === "generate") {

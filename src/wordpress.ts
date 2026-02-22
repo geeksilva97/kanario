@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { config } from "./config.ts";
+import type { WPCredentials } from "./credentials.ts";
 
 export interface WPPost {
   title: string;
@@ -32,11 +32,18 @@ export function parsePostId(input: string): string {
   return input;
 }
 
-async function fetchPostIdBySlug(slug: string): Promise<string> {
-  const url = `${config.wpUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`;
-  const auth = Buffer.from(
-    `${config.wpUsername}:${config.wpAppPassword}`,
+function buildAuth(creds: WPCredentials): string {
+  return Buffer.from(
+    `${creds.wpUsername}:${creds.wpAppPassword}`,
   ).toString("base64");
+}
+
+async function fetchPostIdBySlug(
+  creds: WPCredentials,
+  slug: string,
+): Promise<string> {
+  const url = `${creds.wpUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`;
+  const auth = buildAuth(creds);
 
   const response = await fetch(url, {
     headers: {
@@ -58,7 +65,10 @@ async function fetchPostIdBySlug(slug: string): Promise<string> {
   return String(data[0].id);
 }
 
-export async function resolvePostId(input: string): Promise<string> {
+export async function resolvePostId(
+  creds: WPCredentials,
+  input: string,
+): Promise<string> {
   const parsed = parsePostId(input);
   if (/^\d+$/.test(parsed)) return parsed;
 
@@ -68,7 +78,7 @@ export async function resolvePostId(input: string): Promise<string> {
     if (!slug) {
       throw new Error("URL has no path to extract slug from");
     }
-    return await fetchPostIdBySlug(slug);
+    return await fetchPostIdBySlug(creds, slug);
   } catch (err) {
     if (err instanceof TypeError) {
       // new URL() failed — not a valid URL
@@ -78,12 +88,12 @@ export async function resolvePostId(input: string): Promise<string> {
   }
 }
 
-export async function fetchDraft(postId: string): Promise<WPPost> {
-  const baseUrl = config.wpUrl;
-  const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
-  const auth = Buffer.from(
-    `${config.wpUsername}:${config.wpAppPassword}`,
-  ).toString("base64");
+export async function fetchDraft(
+  creds: WPCredentials,
+  postId: string,
+): Promise<WPPost> {
+  const url = `${creds.wpUrl}/wp-json/wp/v2/posts/${postId}`;
+  const auth = buildAuth(creds);
 
   const response = await fetch(url, {
     headers: {
@@ -107,14 +117,12 @@ export async function fetchDraft(postId: string): Promise<WPPost> {
 }
 
 export async function uploadMedia(
+  creds: WPCredentials,
   imagePath: string,
   filename: string,
 ): Promise<number> {
-  const baseUrl = config.wpUrl;
-  const url = `${baseUrl}/wp-json/wp/v2/media`;
-  const auth = Buffer.from(
-    `${config.wpUsername}:${config.wpAppPassword}`,
-  ).toString("base64");
+  const url = `${creds.wpUrl}/wp-json/wp/v2/media`;
+  const auth = buildAuth(creds);
 
   const body = fs.readFileSync(imagePath);
 
@@ -139,14 +147,12 @@ export async function uploadMedia(
 }
 
 export async function setFeaturedImage(
+  creds: WPCredentials,
   postId: string,
   mediaId: number,
 ): Promise<void> {
-  const baseUrl = config.wpUrl;
-  const url = `${baseUrl}/wp-json/wp/v2/posts/${postId}`;
-  const auth = Buffer.from(
-    `${config.wpUsername}:${config.wpAppPassword}`,
-  ).toString("base64");
+  const url = `${creds.wpUrl}/wp-json/wp/v2/posts/${postId}`;
+  const auth = buildAuth(creds);
 
   const response = await fetch(url, {
     method: "POST",
