@@ -31,7 +31,7 @@ export async function padToWidescreen(mascotPath: string): Promise<string> {
   const { width, height } = await mascot.metadata();
   if (!width || !height) throw new Error(`Cannot read dimensions of ${mascotPath}`);
 
-  const scale = Math.min(CANVAS_HEIGHT / height, CANVAS_WIDTH / 2 / width);
+  const scale = Math.min(CANVAS_HEIGHT / height, CANVAS_WIDTH / 3 / width);
   const resized = await mascot.resize(Math.round(width * scale), Math.round(height * scale)).toBuffer();
 
   const padded = await sharp({
