@@ -338,9 +338,10 @@ const HELP_TEXT = `**Kanario** — Blog thumbnail generator
 Fetches a WordPress draft, generates scene prompts via AI, and produces cover images.
 
 **Getting started:**
-1. DM me: \`/register\` with your WordPress URL, username, and app password
-2. Use \`/generate\` in any channel to create thumbnails for a post
-3. Use \`/pick\` to set one as the post's featured image
+1. Create a WordPress [Application Password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/): **WP Admin → Users → Profile → Application Passwords**
+2. DM me: \`/register\` with your WordPress URL, username, and the app password
+3. Use \`/generate\` in any channel to create thumbnails for a post
+4. Use \`/pick\` to set one as the post's featured image
 
 **Commands:**
 \`/register\` — Save your WordPress credentials (DMs only)
