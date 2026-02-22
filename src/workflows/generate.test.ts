@@ -16,4 +16,32 @@ describe("generateWorkflow", () => {
       { message: /Unknown model "gpt4"/ },
     );
   });
+
+  it("throws when RUNPOD_API_KEY is missing for qwen", async () => {
+    await assert.rejects(
+      () => generateWorkflow({ creds: fakeCreds, postId: "123", model: "gemini", imageModel: "qwen", wide: true }),
+      { message: /RUNPOD_API_KEY/ },
+    );
+  });
+
+  it("throws when GEMINI_API_KEY is missing for gemini model", async () => {
+    await assert.rejects(
+      () => generateWorkflow({ creds: fakeCreds, postId: "123", model: "gemini", imageModel: "qwen", wide: true }),
+      { message: /GEMINI_API_KEY/ },
+    );
+  });
+
+  it("throws when ANTHROPIC_API_KEY is missing for claude model", async () => {
+    await assert.rejects(
+      () => generateWorkflow({ creds: fakeCreds, postId: "123", model: "claude", imageModel: "qwen", wide: true }),
+      { message: /ANTHROPIC_API_KEY/ },
+    );
+  });
+
+  it("throws when GEMINI_API_KEY is missing for nano-banana", async () => {
+    await assert.rejects(
+      () => generateWorkflow({ creds: fakeCreds, postId: "123", model: "claude", imageModel: "nano-banana", wide: true }),
+      { message: /GEMINI_API_KEY/ },
+    );
+  });
 });

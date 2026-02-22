@@ -1,6 +1,9 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { stripHtml, parsePostId, resolvePostId } from "./wordpress.ts";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { stripHtml, parsePostId, resolvePostId, fetchDraft, uploadMedia, setFeaturedImage } from "./wordpress.ts";
 import type { WPCredentials } from "./credentials.ts";
 
 const fakeCreds: WPCredentials = {
@@ -130,6 +133,119 @@ describe("resolvePostId", () => {
     await assert.rejects(
       () => resolvePostId(fakeCreds, "just-a-slug"),
       { message: /Cannot resolve post from input: just-a-slug/ },
+    );
+  });
+});
+
+describe("fetchDraft", () => {
+  it("fetches and strips HTML from post fields", async (t) => {
+    const mockFetch = t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response(JSON.stringify({
+        title: { rendered: "<p>My Post Title</p>" },
+        content: { rendered: "<div>Some <strong>content</strong></div>" },
+        excerpt: { rendered: "<p>An excerpt</p>" },
+      }))),
+    );
+
+    const result = await fetchDraft(fakeCreds, "123");
+    assert.equal(result.title, "My Post Title");
+    assert.equal(result.content, "Some content");
+    assert.equal(result.excerpt, "An excerpt");
+    assert.equal(mockFetch.mock.callCount(), 1);
+
+    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
+    assert.equal(calledUrl, "https://blog.codeminer42.com/wp-json/wp/v2/posts/123");
+
+    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
+    const expectedAuth = Buffer.from("testuser:xxxx xxxx xxxx").toString("base64");
+    assert.equal(calledInit.headers.Authorization, `Basic ${expectedAuth}`);
+  });
+
+  it("throws on non-200 response", async (t) => {
+    t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response("Not Found", { status: 404, statusText: "Not Found" })),
+    );
+
+    await assert.rejects(
+      () => fetchDraft(fakeCreds, "999"),
+      { message: /Failed to fetch post 999: 404 Not Found/ },
+    );
+  });
+});
+
+describe("uploadMedia", () => {
+  let tmpDir: string;
+  let tmpImage: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-upload-test-"));
+    tmpImage = path.join(tmpDir, "test.png");
+    fs.writeFileSync(tmpImage, "fake-png-content");
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  it("uploads file and returns media ID", async (t) => {
+    const mockFetch = t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response(JSON.stringify({ id: 42 }))),
+    );
+
+    const result = await uploadMedia(fakeCreds, tmpImage, "cover.png");
+    assert.equal(result, 42);
+    assert.equal(mockFetch.mock.callCount(), 1);
+
+    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
+    assert.equal(calledUrl, "https://blog.codeminer42.com/wp-json/wp/v2/media");
+
+    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
+    assert.equal(calledInit.method, "POST");
+    assert.equal(calledInit.headers["Content-Type"], "image/png");
+    assert.equal(calledInit.headers["Content-Disposition"], 'attachment; filename="cover.png"');
+
+    const expectedAuth = Buffer.from("testuser:xxxx xxxx xxxx").toString("base64");
+    assert.equal(calledInit.headers.Authorization, `Basic ${expectedAuth}`);
+  });
+
+  it("throws on non-200 response", async (t) => {
+    t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response("Error", { status: 500, statusText: "Internal Server Error" })),
+    );
+
+    await assert.rejects(
+      () => uploadMedia(fakeCreds, tmpImage, "cover.png"),
+      { message: /Failed to upload media: 500 Internal Server Error/ },
+    );
+  });
+});
+
+describe("setFeaturedImage", () => {
+  it("sends POST with featured_media in body", async (t) => {
+    const mockFetch = t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response("{}", { status: 200 })),
+    );
+
+    await setFeaturedImage(fakeCreds, "123", 42);
+    assert.equal(mockFetch.mock.callCount(), 1);
+
+    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
+    assert.equal(calledUrl, "https://blog.codeminer42.com/wp-json/wp/v2/posts/123");
+
+    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
+    assert.equal(calledInit.method, "POST");
+    assert.equal(calledInit.headers["Content-Type"], "application/json");
+    assert.deepEqual(JSON.parse(calledInit.body), { featured_media: 42 });
+  });
+
+  it("throws on non-200 response", async (t) => {
+    t.mock.method(globalThis, "fetch", () =>
+      Promise.resolve(new Response("Error", { status: 403, statusText: "Forbidden" })),
+    );
+
+    await assert.rejects(
+      () => setFeaturedImage(fakeCreds, "123", 42),
+      { message: /Failed to set featured image: 403 Forbidden/ },
     );
   });
 });

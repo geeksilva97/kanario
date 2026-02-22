@@ -51,4 +51,42 @@ describe("improveWorkflow", () => {
       { message: /Image not found: \/nonexistent\/image\.png/ },
     );
   });
+
+  it("throws when RUNPOD_API_KEY is missing for qwen", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-improve-test-"));
+    const img = path.join(dir, "test.png");
+    fs.writeFileSync(img, "fake");
+    try {
+      await assert.rejects(
+        () => improveWorkflow({
+          sourceImagePath: img,
+          prompt: "make it better",
+          imageModel: "qwen",
+          outputDir: dir,
+        }),
+        { message: /RUNPOD_API_KEY/ },
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true });
+    }
+  });
+
+  it("throws when GEMINI_API_KEY is missing for nano-banana", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-improve-test-"));
+    const img = path.join(dir, "test.png");
+    fs.writeFileSync(img, "fake");
+    try {
+      await assert.rejects(
+        () => improveWorkflow({
+          sourceImagePath: img,
+          prompt: "make it better",
+          imageModel: "nano-banana",
+          outputDir: dir,
+        }),
+        { message: /GEMINI_API_KEY/ },
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true });
+    }
+  });
 });
