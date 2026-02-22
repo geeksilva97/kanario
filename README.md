@@ -206,6 +206,7 @@ Discord will send a PING to verify the endpoint responds with PONG before saving
 |---|---|
 | Memory | 512 Mi |
 | CPU | 1 |
+| CPU throttling | Off (background work runs after the deferred response) |
 | Timeout | 300s |
 | Min instances | 0 (scales to zero) |
 | Max instances | 3 |
