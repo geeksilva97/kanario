@@ -260,7 +260,7 @@ async function handleGenerate(interaction: any) {
     );
 
     const promptList = result.prompts
-      .map((p, i) => `**${i + 1}.** ${p.scene}`)
+      .map((p, i) => `**${i + 1}. ${p.scene}** — ${p.scene_description}`)
       .join("\n");
 
     const content = `${mention} **${result.postTitle}**\n\n${promptList}\n\nGenerated ${result.imagePaths.length} images:`;
