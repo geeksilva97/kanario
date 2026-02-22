@@ -17,6 +17,9 @@ npx tsc --noEmit
 # Smoke test (generates real images, requires .env)
 ./test/smoke.sh
 
+# Smoke test with hints (validates hint precedence)
+./test/smoke-hint.sh
+
 # Start Discord bot server
 npm run server
 
@@ -97,7 +100,8 @@ src/
 - All tests are in `test/index.test.ts` — run with `npm test`.
 - Tests are pure unit tests that don't require env vars or network access (mocked where needed).
 - Integration tests (`test/wordpress.integration.test.ts`) require `.env.test` and hit the real WP API.
-- **Smoke test** (`test/smoke.sh`) — generates thumbnails for 3 fixed posts in parallel, prints summary with mascot/none split, opens output folders. Run after changing `system.md` or generators to evaluate prompt quality visually.
+- **Smoke test** (`test/smoke.sh`) — generates thumbnails for 5 fixed posts in parallel, prints summary with mascot/none split, opens output folders. Run after changing `system.md` or generators to evaluate prompt quality visually.
+- **Hint smoke test** (`test/smoke-hint.sh`) — generates thumbnails for 3 posts with specific hints, prints scene titles to verify hint precedence. Run after changing the creative direction section in `system.md`.
 
 ## Important rules
 

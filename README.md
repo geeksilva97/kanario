@@ -404,7 +404,8 @@ Requires `RUNPOD_API_KEY` and `RUNPOD_DOCKER_IMAGE` env vars.
 
 ```bash
 npm test              # unit tests (no network, no .env)
-./test/smoke.sh       # smoke test — generates real images for 3 posts, opens output
+./test/smoke.sh       # smoke test — generates real images for 5 posts, opens output
+./test/smoke-hint.sh  # hint smoke test — validates hint precedence with 3 posts
 ```
 
 ## Stack
