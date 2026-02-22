@@ -71,6 +71,11 @@ function getOptionValue(interaction: any, name: string): string | undefined {
   return opt?.value;
 }
 
+function getUserMention(interaction: any): string {
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  return userId ? `<@${userId}>` : "";
+}
+
 async function editOriginalMessage(
   token: string,
   content: string,
@@ -152,7 +157,8 @@ async function handleGenerate(interaction: any) {
       .map((p, i) => `**${i + 1}.** ${p.scene}`)
       .join("\n");
 
-    const content = `**${result.postTitle}**\n\n${promptList}\n\nGenerated ${result.imagePaths.length} images:`;
+    const mention = getUserMention(interaction);
+    const content = `${mention} **${result.postTitle}**\n\n${promptList}\n\nGenerated ${result.imagePaths.length} images:`;
 
     const files = result.imagePaths.map((p) => ({
       name: p.split("/").pop()!,
@@ -161,8 +167,9 @@ async function handleGenerate(interaction: any) {
 
     await editOriginalMessage(token, content, files);
   } catch (err) {
+    const mention = getUserMention(interaction);
     const msg = err instanceof Error ? err.message : String(err);
-    await editOriginalMessage(token, `Generation failed: ${msg}`);
+    await editOriginalMessage(token, `${mention} Generation failed: ${msg}`);
   }
 }
 
@@ -177,14 +184,16 @@ async function handlePick(interaction: any) {
     const post = await fetchDraft(postId);
 
     const result = await pickWorkflow({ postId, imagePath });
+    const mention = getUserMention(interaction);
 
     await editOriginalMessage(
       token,
-      `Featured image set for **${post.title}**\n\nImage: \`${imageArg}\`\nMedia ID: ${result.mediaId}`,
+      `${mention} Featured image set for **${post.title}**\n\nImage: \`${imageArg}\`\nMedia ID: ${result.mediaId}`,
     );
   } catch (err) {
+    const mention = getUserMention(interaction);
     const msg = err instanceof Error ? err.message : String(err);
-    await editOriginalMessage(token, `Pick failed: ${msg}`);
+    await editOriginalMessage(token, `${mention} Pick failed: ${msg}`);
   }
 }
 
