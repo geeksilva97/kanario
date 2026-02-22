@@ -273,7 +273,8 @@ Requires `RUNPOD_API_KEY` and `RUNPOD_DOCKER_IMAGE` env vars.
 ## Tests
 
 ```bash
-npm test
+npm test              # unit tests (no network, no .env)
+./test/smoke.sh       # smoke test — generates real images for 3 posts, opens output
 ```
 
 ## Stack

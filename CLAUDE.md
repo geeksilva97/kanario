@@ -14,6 +14,9 @@ npm test
 # Type check
 npx tsc --noEmit
 
+# Smoke test (generates real images, requires .env)
+./test/smoke.sh
+
 # Start Discord bot server
 npm run server
 
@@ -58,17 +61,20 @@ src/
 
 ## Key patterns
 
-- **Image backends implement `ImageBackend` interface** — `generate()` takes prompt + mascotPath + seed + wide, returns a PNG `Buffer`. Optional `maxConcurrency` limits parallel jobs.
-- **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.
+- **Image backends implement `ImageBackend` interface** — `generate()` takes prompt + optional mascotPath + seed + wide, returns a PNG `Buffer`. Optional `maxConcurrency` limits parallel jobs.
+- **Mascot is optional per scene** — the LLM decides independently for each scene whether a mascot fits (`miner`, `hat`) or a scene-only diorama works better (`none`). When `none`, Qwen gets a blank white canvas (required field), Nano Banana gets text-only content.
+- **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.
 - **Nano Banana** runs with concurrency 1 and exponential backoff retry (5s initial, up to 6 retries) to handle Vertex AI rate limits.
 - **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT` and `buildFullPrompt` from `prompt-generator.ts`. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
-- **Two mascots**: `miner` (mascot3d.png) and `hat` (mascot-hat.png) — the LLM picks which one to use per prompt.
+- **Two mascots + none**: `miner` (mascot3d.png), `hat` (mascot-hat.png), or `none` (no mascot) — the LLM picks per prompt.
+- **Secondary characters** — use "cute round-bodied bot buddy" (never "robot" — Qwen confuses it with the mascot). Seed is `-1` (Qwen picks random).
 
 ## Testing
 
 - All tests are in `test/index.test.ts` — run with `npm test`.
 - Tests are pure unit tests that don't require env vars or network access (mocked where needed).
 - Integration tests (`test/wordpress.integration.test.ts`) require `.env.test` and hit the real WP API.
+- **Smoke test** (`test/smoke.sh`) — generates thumbnails for 3 fixed posts in parallel, prints summary with mascot/none split, opens output folders. Run after changing `system.md` or generators to evaluate prompt quality visually.
 
 ## Important rules
 
