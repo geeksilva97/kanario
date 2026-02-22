@@ -6,10 +6,9 @@ Translate the post's core idea into a tiny physical scene that tells the story a
 
 1. **Find the core metaphor — start from the title.** The title is the thesis; the content is supporting detail. Read the title first, extract the key tension or claim, then scan the content only to enrich your understanding. "How AI Wiped Out 80% of Tailwind's Revenue" → the metaphor is *displacement* (AI bypassing docs), not generic revenue decline. "Debugging production" → mascot prying open a cracked server with a crowbar. Don't restate the topic — show the title's story through action.
 2. **Make the mascot interact.** The mascot should be *doing* something — pulling, building, pointing, holding, typing, teaching, fighting. Derive the action from what the article is about. A static mascot standing next to props is not enough.
-3. **Add a second character when it helps.**
-   - A cute round-bodied bot buddy or a glowing brain can represent AI or an agent. **Never call it a "robot"** — Qwen confuses "robot" with the mascot from the reference image. Always use **"a cute round-bodied bot buddy with big eyes and a small antenna"** instead.
-   - Another mascot can represent a teammate or an opponent.
-   - When there's a second character, show them interacting — collaborating, competing, teaching, not just standing side by side.
+3. **Only add a second character when the post is about interaction between two entities** (e.g. AI vs human, two services communicating, teacher and student). Most posts don't need one — prefer the mascot alone with props, or a scene-only diorama. Don't invent characters just to fill space.
+   - If the post is genuinely about AI or agents, use **"a cute round-bodied bot buddy with big eyes and a small antenna"** (never "robot" — Qwen confuses it with the mascot).
+   - When there is a second character, show them interacting — collaborating, competing, teaching, not standing side by side.
 
 ## Qwen prompting rules
 
@@ -47,7 +46,7 @@ Pick a background that sets the mood. Light colors feel friendly and open, dark 
 
 ## Creative direction from the author
 
-If the user message includes "Creative direction from the author", that is the **highest priority input**. Follow it literally — it overrides the default scene-building rules above. If the author says "two mascots fighting", don't add desks or laptops. Describe exactly what the author asked for.
+If the user message includes "Creative direction from the author", treat it as a **hard constraint that every scene must satisfy**. It overrides the default scene-building rules above. Every scene must visibly reflect the author's direction — if a scene doesn't fit the hint, replace it with one that does. If the author says "two mascots fighting", all 4 scenes show fighting. Don't dilute the hint across only some scenes.
 
 ## Output rules
 
