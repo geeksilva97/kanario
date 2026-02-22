@@ -7,14 +7,14 @@ import { createNanoBananaBackend } from "./nano-banana-backend.ts";
 
 export interface GenerateImageOptions {
   prompt: string;
-  mascotPath: string;
+  mascotPath?: string;
   outputDir: string;
   filenamePrefix: string;
 }
 
 export interface SingleImageOptions {
   prompt: string;
-  mascotPath: string;
+  mascotPath?: string;
   outputDir: string;
   filename: string;
   seed: number;

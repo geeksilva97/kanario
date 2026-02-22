@@ -23,9 +23,9 @@ const promptSchema = {
           },
           mascot: {
             type: Type.STRING,
-            enum: ["miner", "hat"],
+            enum: ["miner", "hat", "none"],
             description:
-              "Which mascot to use: 'miner' (rugged) or 'hat' (intellectual)",
+              "Which mascot to use: 'miner' (rugged), 'hat' (intellectual), or 'none' (scene-only, no character)",
           },
           background: {
             type: Type.STRING,
@@ -35,7 +35,7 @@ const promptSchema = {
           scene_description: {
             type: Type.STRING,
             description:
-              "2-3 sentences (under 40 words). Place the mascot and props in a scene with camera-relative depth. Use 'a small mascot from the reference image'. Don't prescribe poses.",
+              "2-3 sentences (under 40 words). When mascot is 'miner' or 'hat', place the mascot and props in a scene with camera-relative depth using 'a small mascot from the reference image'. When mascot is 'none', describe only the scene and props — no characters.",
           },
         },
         required: ["scene", "mascot", "background", "scene_description"],

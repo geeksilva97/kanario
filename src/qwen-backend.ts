@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { config } from "./config.ts";
 import { encodeMascot } from "./image-generator.ts";
 import type { ImageBackend } from "./image-backend.ts";
@@ -42,7 +43,17 @@ async function pollUntilCompleted(jobId: string): Promise<any> {
 export function createQwenBackend(): ImageBackend {
   return {
     async generate({ prompt, mascotPath, seed, wide }) {
-      const mascotBase64 = await encodeMascot(mascotPath, wide);
+      let mascotBase64: string;
+      if (mascotPath) {
+        mascotBase64 = await encodeMascot(mascotPath, wide);
+      } else {
+        const w = wide ? 1280 : 1024;
+        const h = wide ? 720 : 1024;
+        const blank = await sharp({
+          create: { width: w, height: h, channels: 3, background: { r: 255, g: 255, b: 255 } },
+        }).png().toBuffer();
+        mascotBase64 = blank.toString("base64");
+      }
 
       const body = {
         input: {

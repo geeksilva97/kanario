@@ -252,15 +252,22 @@ describe("prompt structure validation", () => {
           scene_description: "A small mascot from the reference image holds open a large treasure map in the foreground, a winding path stretching into the background",
           full_prompt: buildPrompt("A small mascot from the reference image holds open a large treasure map in the foreground, a winding path stretching into the background", "soft sky blue"),
         },
+        {
+          scene: "gears and conveyor belt",
+          mascot: "none",
+          background: "slate",
+          scene_description: "Interlocking gears drive a conveyor belt carrying glowing data packets across the midground, steam rising from pipes in the background",
+          full_prompt: buildPrompt("Interlocking gears drive a conveyor belt carrying glowing data packets across the midground, steam rising from pipes in the background", "dark charcoal"),
+        },
       ],
     };
 
     assert.ok(Array.isArray(result.prompts));
-    assert.ok(result.prompts.length === 4);
+    assert.ok(result.prompts.length === 5);
 
     for (const p of result.prompts) {
       assert.ok(typeof p.scene === "string" && p.scene.length > 0);
-      assert.ok(typeof p.mascot === "string" && (p.mascot === "miner" || p.mascot === "hat"));
+      assert.ok(typeof p.mascot === "string" && (p.mascot === "miner" || p.mascot === "hat" || p.mascot === "none"));
       assert.ok(typeof p.background === "string" && p.background in BACKGROUND_COLORS);
       assert.ok(typeof p.scene_description === "string" && p.scene_description.length > 0);
       assert.ok(typeof p.full_prompt === "string");

@@ -16,22 +16,20 @@ export function createNanoBananaBackend(): ImageBackend {
     maxConcurrency: 1,
     async generate({ prompt, mascotPath, seed, wide }) {
       const ai = new GoogleGenAI({ vertexai: true, apiKey: config.geminiApiKey });
-      const mascotBase64 = fs.readFileSync(mascotPath).toString("base64");
+
+      const parts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
+      if (mascotPath) {
+        const mascotBase64 = fs.readFileSync(mascotPath).toString("base64");
+        parts.push({ inlineData: { data: mascotBase64, mimeType: "image/png" } });
+      }
+      parts.push({ text: prompt });
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
           console.log(`    Generating via Nano Banana (Gemini 2.5 Flash Image) ...`);
           const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-image",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  { inlineData: { data: mascotBase64, mimeType: "image/png" } },
-                  { text: prompt },
-                ],
-              },
-            ],
+            contents: [{ role: "user", parts }],
             config: {
               responseModalities: ["IMAGE"],
               ...(wide && { imageConfig: { aspectRatio: "16:9" } }),

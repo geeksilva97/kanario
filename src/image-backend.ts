@@ -1,7 +1,7 @@
 export interface ImageBackend {
   generate(options: {
     prompt: string;
-    mascotPath: string;
+    mascotPath?: string;
     seed: number;
     wide: boolean;
   }): Promise<Buffer>;

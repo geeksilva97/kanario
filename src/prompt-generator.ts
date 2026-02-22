@@ -54,9 +54,9 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
                   },
                   mascot: {
                     type: "string",
-                    enum: ["miner", "hat"],
+                    enum: ["miner", "hat", "none"],
                     description:
-                      "Which mascot to use: 'miner' (rugged) or 'hat' (intellectual)",
+                      "Which mascot to use: 'miner' (rugged), 'hat' (intellectual), or 'none' (scene-only, no character)",
                   },
                   background: {
                     type: "string",
@@ -67,7 +67,7 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
                   scene_description: {
                     type: "string",
                     description:
-                      "2-3 sentences (under 40 words). Place the mascot and props in a scene with camera-relative depth. Use 'a small mascot from the reference image'. Don't prescribe poses.",
+                      "2-3 sentences (under 40 words). When mascot is 'miner' or 'hat', place the mascot and props in a scene with camera-relative depth using 'a small mascot from the reference image'. When mascot is 'none', describe only the scene and props — no characters.",
                   },
                 },
                 required: ["scene", "mascot", "background", "scene_description"],

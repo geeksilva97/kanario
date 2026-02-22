@@ -72,15 +72,16 @@ export async function generateWorkflow(
   const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, postId);
 
   const jobs = result.prompts.map((prompt, i) => {
-    const mascotId = (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
+    const isNone = prompt.mascot === "none";
+    const mascotId = isNone ? undefined : (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
     return {
       prompt: prompt.full_prompt,
-      mascotPath: MASCOTS[mascotId],
+      ...(mascotId ? { mascotPath: MASCOTS[mascotId] } : {}),
       outputDir,
       filename: `prompt-${i + 1}.png`,
       seed: Math.floor(Math.random() * 2 ** 32),
       wide,
-      label: `Prompt ${i + 1}: ${prompt.scene} (mascot: ${mascotId})`,
+      label: `Prompt ${i + 1}: ${prompt.scene} (${isNone ? "no mascot" : `mascot: ${mascotId}`})`,
     };
   });
 
