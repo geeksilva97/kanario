@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
+import { DatabaseSync } from "node:sqlite";
 import { initDb, closeDb, saveCredentials, loadCredentials, deleteCredentials, getCredentialInfo } from "./store.ts";
 import type { WPCredentials } from "./credentials.ts";
 
@@ -69,5 +70,33 @@ describe("credential store", () => {
 
   it("getCredentialInfo returns null for unknown user", () => {
     assert.equal(getCredentialInfo("unknown"), null);
+  });
+
+  it("encrypts password in DB and decrypts on load", () => {
+    saveCredentials("user123", fakeCreds);
+
+    // Read raw DB to verify the password is not stored as plaintext
+    const rawDb = new DatabaseSync(dbPath);
+    const row = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user123'").get() as any;
+    rawDb.close();
+
+    assert.notEqual(row.wp_app_password, fakeCreds.wpAppPassword);
+    assert.ok(row.wp_app_password.includes(":"), "encrypted format should be iv:tag:data");
+
+    // loadCredentials should decrypt it back
+    const loaded = loadCredentials("user123");
+    assert.equal(loaded?.wpAppPassword, fakeCreds.wpAppPassword);
+  });
+
+  it("produces different ciphertext for the same password (random IV)", () => {
+    saveCredentials("user-a", fakeCreds);
+    saveCredentials("user-b", fakeCreds);
+
+    const rawDb = new DatabaseSync(dbPath);
+    const rowA = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user-a'").get() as any;
+    const rowB = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user-b'").get() as any;
+    rawDb.close();
+
+    assert.notEqual(rowA.wp_app_password, rowB.wp_app_password);
   });
 });
