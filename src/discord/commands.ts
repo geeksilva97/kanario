@@ -163,6 +163,8 @@ function isInGuild(interaction: any): boolean {
   return !!interaction.guild_id;
 }
 
+const CLOCK_SPINNER = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"];
+
 async function editOriginalMessage(
   token: string,
   content: string,
@@ -245,9 +247,11 @@ async function handleGenerate(interaction: any) {
   try {
     const postId = await resolvePostId(creds, rawPostId);
     let progress = "";
+    let step = 0;
     const onProgress = (msg: string) => {
+      const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
       progress += msg + "\n";
-      editOriginalMessage(token, `${mention}\n\`\`\`\n${progress}\`\`\``);
+      editOriginalMessage(token, `${mention} ${clock} Generating thumbnails...\n\`\`\`\n${progress}\`\`\``);
     };
 
     const result = await generateWorkflow(
@@ -331,9 +335,11 @@ async function handleImprove(interaction: any) {
     const outputDir = path.join(OUTPUT_DIR, rawPostId);
 
     let progress = "";
+    let step = 0;
     const onProgress = (msg: string) => {
+      const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
       progress += msg + "\n";
-      editOriginalMessage(token, `${mention}\n\`\`\`\n${progress}\`\`\``);
+      editOriginalMessage(token, `${mention} ${clock} Improving image...\n\`\`\`\n${progress}\`\`\``);
     };
 
     const result = await improveWorkflow(
