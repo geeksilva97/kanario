@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Kanario" width="128" />
+</p>
+
 # Kanario
 
 Blog thumbnail agent. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via an image backend (Qwen Image Edit on RunPod or Nano Banana on Vertex AI).
