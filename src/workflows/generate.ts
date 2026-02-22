@@ -79,7 +79,7 @@ export async function generateWorkflow(
       ...(mascotId ? { mascotPath: MASCOTS[mascotId] } : {}),
       outputDir,
       filename: `prompt-${i + 1}.png`,
-      seed: Math.floor(Math.random() * 2 ** 32),
+      seed: -1,
       wide,
       label: `Prompt ${i + 1}: ${prompt.scene} (${isNone ? "no mascot" : `mascot: ${mascotId}`})`,
     };

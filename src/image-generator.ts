@@ -69,7 +69,7 @@ export async function generateSingleImage(
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  console.log(`  Generating ${filename} (seed: ${seed}) ...`);
+  console.log(`  Generating ${filename} ...`);
 
   const pngBuffer = await backend.generate({ prompt, mascotPath, seed, wide });
 
@@ -86,21 +86,16 @@ export async function generateImages(
 ): Promise<string[]> {
   const { prompt, mascotPath, outputDir, filenamePrefix } = options;
 
-  const seeds = [
-    Math.floor(Math.random() * 2 ** 32),
-    Math.floor(Math.random() * 2 ** 32),
-  ];
-
   const suffixes = ["a", "b"];
 
   const paths = await Promise.all(
-    suffixes.map((suffix, i) =>
+    suffixes.map((suffix) =>
       generateSingleImage({
         prompt,
         mascotPath,
         outputDir,
         filename: `${filenamePrefix}${suffix}.png`,
-        seed: seeds[i],
+        seed: -1,
       }, backend),
     ),
   );
