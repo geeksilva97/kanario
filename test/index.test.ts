@@ -195,7 +195,12 @@ describe("buildFullPrompt", () => {
 });
 
 describe("resolveImagePath", () => {
-  it("resolves shorthand to output directory", () => {
+  it("resolves numeric shorthand to output directory", () => {
+    const result = resolveImagePath("12518", "2");
+    assert.equal(result, path.join(OUTPUT_DIR, "12518", "prompt-2.png"));
+  });
+
+  it("resolves legacy shorthand with suffix to output directory", () => {
     const result = resolveImagePath("12518", "2a");
     assert.equal(result, path.join(OUTPUT_DIR, "12518", "prompt-2a.png"));
   });
@@ -233,11 +238,25 @@ describe("prompt structure validation", () => {
           scene_description: "A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background",
           full_prompt: buildPrompt("A small mascot from the reference image stands next to a server rack in the midground, with blinking lights in the background", "deep navy blue"),
         },
+        {
+          scene: "mascot building a bridge",
+          mascot: "miner",
+          background: "mint",
+          scene_description: "A small mascot from the reference image hammers wooden planks on a half-built bridge in the foreground, a river flowing below",
+          full_prompt: buildPrompt("A small mascot from the reference image hammers wooden planks on a half-built bridge in the foreground, a river flowing below", "soft mint green"),
+        },
+        {
+          scene: "mascot reading a map",
+          mascot: "hat",
+          background: "sky",
+          scene_description: "A small mascot from the reference image holds open a large treasure map in the foreground, a winding path stretching into the background",
+          full_prompt: buildPrompt("A small mascot from the reference image holds open a large treasure map in the foreground, a winding path stretching into the background", "soft sky blue"),
+        },
       ],
     };
 
     assert.ok(Array.isArray(result.prompts));
-    assert.ok(result.prompts.length >= 2 && result.prompts.length <= 3);
+    assert.ok(result.prompts.length === 4);
 
     for (const p of result.prompts) {
       assert.ok(typeof p.scene === "string" && p.scene.length > 0);

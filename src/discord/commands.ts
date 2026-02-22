@@ -57,7 +57,7 @@ export const COMMAND_DEFINITIONS = [
       },
       {
         name: "image",
-        description: 'Image shorthand (e.g. "2a") or full file path',
+        description: 'Image shorthand (e.g. "2") or full file path',
         type: 3, // STRING
         required: true,
       },

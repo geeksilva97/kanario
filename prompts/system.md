@@ -50,7 +50,7 @@ If the user message includes "Creative direction from the author", that is the *
 
 ## Output rules
 
-- Generate exactly 2-3 scenes
+- Generate exactly 4 scenes
 - Each scene is a **visual metaphor** — a diorama that captures the post's essence
 - Simple props, no clutter
 - scene_description will be interpolated into a locked style template — just describe the diorama, nothing else

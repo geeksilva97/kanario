@@ -23,7 +23,7 @@ and produces cover images via an image backend (Qwen on RunPod or Nano Banana on
 
 Arguments:
   post-id-or-url  WordPress post ID or wp-admin edit URL
-  <image>         Shorthand (e.g. "2a") or full path to a PNG
+  <image>         Shorthand (e.g. "2") or full path to a PNG
 
 Options:
   --model        LLM for prompt generation: "gemini" (default) or "claude"
@@ -38,7 +38,7 @@ Examples:
   ./kanario 12487 --model claude
   ./kanario 12487 --image-model nano-banana
   ./kanario 12487 --hint "versus scene, two robots facing off"
-  ./kanario pick 12487 2a
+  ./kanario pick 12487 2
   ./kanario pick 12487 /path/to/custom.png`);
   process.exit(0);
 }

@@ -70,18 +70,17 @@ export async function generateWorkflow(
   log(`[3/4] Generating images via ${imageLabel} (${wide ? "wide" : "square"}) ...`);
   const outputDir = path.join(OUTPUT_DIR, postId);
 
-  const suffixes = ["a", "b"];
-  const jobs = result.prompts.flatMap((prompt, i) => {
+  const jobs = result.prompts.map((prompt, i) => {
     const mascotId = (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
-    return suffixes.map((suffix) => ({
+    return {
       prompt: prompt.full_prompt,
       mascotPath: MASCOTS[mascotId],
       outputDir,
-      filename: `prompt-${i + 1}${suffix}.png`,
+      filename: `prompt-${i + 1}.png`,
       seed: Math.floor(Math.random() * 2 ** 32),
       wide,
-      label: `Prompt ${i + 1}${suffix}: ${prompt.scene} (mascot: ${mascotId})`,
-    }));
+      label: `Prompt ${i + 1}: ${prompt.scene} (mascot: ${mascotId})`,
+    };
   });
 
   for (const job of jobs) {

@@ -5,7 +5,7 @@ import { fetchDraft, resolvePostId } from "../wordpress.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 
 export function resolveImagePath(postId: string, imageArg: string): string {
-  if (/^\d+[a-z]$/.test(imageArg)) {
+  if (/^\d+[a-z]?$/.test(imageArg)) {
     return path.join(OUTPUT_DIR, postId, `prompt-${imageArg}.png`);
   }
   return path.resolve(imageArg);
@@ -17,7 +17,7 @@ export async function pick(positionals: string[]) {
 
   if (!rawPostId || !imageArg) {
     console.error("Usage: ./kanario pick <post-id-or-url> <image>");
-    console.error('  <image> can be a shorthand like "2a" or a full file path');
+    console.error('  <image> can be a shorthand like "2" or a full file path');
     process.exit(1);
   }
 

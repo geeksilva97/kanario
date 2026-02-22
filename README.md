@@ -8,7 +8,7 @@ Given a post ID (or URL), the CLI:
 
 1. Fetches the draft from WordPress REST API
 2. Sends the content to an LLM (Gemini by default, or Claude), which generates 3 scene descriptions
-3. Submits all 6 image jobs in parallel (3 prompts x 2 seeds) to the chosen image backend (Qwen on RunPod or Nano Banana on Vertex AI)
+3. Submits 4 image jobs (1 per prompt) to the chosen image backend (Qwen on RunPod or Nano Banana on Vertex AI)
 4. Saves everything to `output/<post-id>/`
 
 Once you've picked a favorite, the `pick` subcommand uploads it to WordPress and sets it as the post's featured image.
@@ -83,14 +83,14 @@ Examples:
 ./kanario pick <post-id-or-url> <image>
 ```
 
-`<image>` accepts a shorthand like `2a` (resolves to `output/<post-id>/prompt-2a.png`) or a full file path.
+`<image>` accepts a shorthand like `2` (resolves to `output/<post-id>/prompt-2.png`) or a full file path.
 
 Shows the post title and image path, then asks for confirmation before uploading.
 
 Examples:
 
 ```bash
-./kanario pick 12487 2a
+./kanario pick 12487 2
 ./kanario pick 12487 /path/to/custom.png
 ```
 
@@ -98,12 +98,10 @@ Output goes to `output/<post-id>/`:
 
 ```
 output/12345/
-├── prompt-1a.png
-├── prompt-1b.png
-├── prompt-2a.png
-├── prompt-2b.png
-├── prompt-3a.png
-├── prompt-3b.png
+├── prompt-1.png
+├── prompt-2.png
+├── prompt-3.png
+├── prompt-4.png
 └── prompts.json
 ```
 
@@ -136,7 +134,7 @@ npm run server
 
 | Command | Description |
 |---|---|
-| `/generate post_id [model] [image_model] [hint]` | Generate 6 thumbnail images for a WordPress post (accepts ID, wp-admin URL, or published URL) |
+| `/generate post_id [model] [image_model] [hint]` | Generate 4 thumbnail images for a WordPress post (accepts ID, wp-admin URL, or published URL) |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (accepts ID, wp-admin URL, or published URL) |
 
 Both commands respond with a deferred message, then edit it with the result once the workflow completes.
