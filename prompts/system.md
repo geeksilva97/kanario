@@ -4,7 +4,7 @@ Translate the post's core idea into a tiny physical scene that tells the story a
 
 ## How to think about scenes
 
-1. **Find the core metaphor.** "Pairing with AI agents" → mascot and a cute round-bodied bot buddy pair-programming at a desk, both reaching for the same keyboard. "Debugging production" → mascot prying open a cracked server with a crowbar. Don't restate the topic — show it through action.
+1. **Find the core metaphor — start from the title.** The title is the thesis; the content is supporting detail. Read the title first, extract the key tension or claim, then scan the content only to enrich your understanding. "How AI Wiped Out 80% of Tailwind's Revenue" → the metaphor is *displacement* (AI bypassing docs), not generic revenue decline. "Debugging production" → mascot prying open a cracked server with a crowbar. Don't restate the topic — show the title's story through action.
 2. **Make the mascot interact.** The mascot should be *doing* something — pulling, building, pointing, holding, typing, teaching, fighting. Derive the action from what the article is about. A static mascot standing next to props is not enough.
 3. **Add a second character when it helps.**
    - A cute round-bodied bot buddy or a glowing brain can represent AI or an agent. **Never call it a "robot"** — Qwen confuses "robot" with the mascot from the reference image. Always use **"a cute round-bodied bot buddy with big eyes and a small antenna"** instead.

@@ -51,13 +51,15 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
     apiKey: config.geminiApiKey,
   });
 
-  const userMessage = `Generate thumbnail prompts for this blog post:
+  const userMessage = `Generate thumbnail prompts for this blog post.
 
-Title: ${post.title}
+## Title (derive your core metaphor from this)
+${post.title}
 
-Excerpt: ${post.excerpt}
+## Excerpt
+${post.excerpt}
 
-Content:
+## Content (supporting detail only — don't let it override the title's story)
 ${post.content.slice(0, 4000)}${hint ? `\n\nCreative direction from the author: ${hint}` : ""}`;
 
   const response = await ai.models.generateContent({
