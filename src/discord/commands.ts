@@ -84,8 +84,8 @@ export const COMMAND_DEFINITIONS = [
         required: true,
       },
       {
-        name: "image_url",
-        description: "Discord CDN URL of the image to improve",
+        name: "image",
+        description: 'Image number (e.g. "2") or URL',
         type: 3, // STRING
         required: true,
       },
@@ -316,21 +316,29 @@ async function handleImprove(interaction: any) {
   const token = interaction.token;
   const mention = getUserMention(interaction);
   const rawPostId = getOptionValue(interaction, "post_id") || "";
-  const imageUrl = getOptionValue(interaction, "image_url") || "";
+  const imageArg = getOptionValue(interaction, "image") || "";
   const prompt = getOptionValue(interaction, "prompt") || "";
   const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
 
   let tempFile: string | undefined;
 
   try {
-    // Download image from URL to temp file
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+    let sourceImagePath: string;
+
+    if (/^https?:\/\//.test(imageArg)) {
+      // URL — download to temp file
+      const response = await fetch(imageArg);
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      tempFile = path.join(os.tmpdir(), `kanario-improve-${Date.now()}.png`);
+      fs.writeFileSync(tempFile, buffer);
+      sourceImagePath = tempFile;
+    } else {
+      // Number shorthand — resolve to local file
+      sourceImagePath = resolveImagePath(rawPostId, imageArg);
     }
-    const buffer = Buffer.from(await response.arrayBuffer());
-    tempFile = path.join(os.tmpdir(), `kanario-improve-${Date.now()}.png`);
-    fs.writeFileSync(tempFile, buffer);
 
     const outputDir = path.join(OUTPUT_DIR, rawPostId);
 
@@ -343,7 +351,7 @@ async function handleImprove(interaction: any) {
     };
 
     const result = await improveWorkflow(
-      { sourceImagePath: tempFile, prompt, imageModel, outputDir },
+      { sourceImagePath, prompt, imageModel, outputDir },
       onProgress,
     );
 
@@ -443,14 +451,14 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 \`/unregister\` — Remove your stored credentials
 \`/whoami\` — Check your registered credentials
 \`/generate post_id [model] [image_model] [hint]\` — Generate 5 thumbnail options
-\`/improve post_id image_url prompt [image_model]\` — Iterate on an existing image
+\`/improve post_id image prompt [image_model]\` — Iterate on an existing image
 \`/pick post_id image\` — Upload an image and set it as featured
 \`/help\` — Show this message
 
 **Tips:**
 - \`post_id\` accepts a numeric ID, a wp-admin URL, or a published post URL
 - Use \`--hint\` to guide the visual metaphor (e.g. "two models competing")
-- Use \`/improve\` to tweak a generated image — copy its URL from \`/generate\` output
+- Use \`/improve\` to tweak a generated image — pass the image number from \`/generate\` output (or a URL)
 - Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)
 - \`/generate\` and \`/improve\` show live progress updates while images are being generated`;
 

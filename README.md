@@ -184,7 +184,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `/unregister` | Remove your stored WordPress credentials |
 | `/whoami` | Show your registered URL and username (no password) |
 | `/generate post_id [model] [image_model] [hint]` | Generate 5 thumbnail images for a WordPress post (requires registration) |
-| `/improve post_id image_url prompt [image_model]` | Iterate on a generated image with a new prompt |
+| `/improve post_id image prompt [image_model]` | Iterate on a generated image with a new prompt |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (requires registration) |
 
 All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate`, `/improve`, and `/pick` results are visible to the channel.
