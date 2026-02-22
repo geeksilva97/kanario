@@ -161,13 +161,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 | Command | Description |
 |---|---|
+| `/help` | Learn how Kanario works |
 | `/register wp_url username app_password` | Register your WordPress credentials (DMs only) |
 | `/unregister` | Remove your stored WordPress credentials |
 | `/whoami` | Show your registered URL and username (no password) |
-| `/generate post_id [model] [image_model] [hint]` | Generate 4 thumbnail images for a WordPress post (requires registration) |
+| `/generate post_id [model] [image_model] [hint]` | Generate 5 thumbnail images for a WordPress post (requires registration) |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (requires registration) |
 
-All commands use deferred responses (Discord's 3s deadline). `/register`, `/unregister`, and `/whoami` are also ephemeral (only visible to you). `/generate` and `/pick` results are visible to the channel.
+All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate` and `/pick` results are visible to the channel.
 
 ### Health check
 

@@ -102,6 +102,10 @@ export const COMMAND_DEFINITIONS = [
     name: "whoami",
     description: "Show your registered WordPress credentials (no password)",
   },
+  {
+    name: "help",
+    description: "Learn how Kanario works",
+  },
 ];
 
 function getOptionValue(interaction: any, name: string): string | undefined {
@@ -329,8 +333,38 @@ async function handleWhoamiAsync(interaction: any) {
   );
 }
 
+const HELP_TEXT = `**Kanario** — Blog thumbnail generator
+
+Fetches a WordPress draft, generates scene prompts via AI, and produces cover images.
+
+**Getting started:**
+1. DM me: \`/register\` with your WordPress URL, username, and app password
+2. Use \`/generate\` in any channel to create thumbnails for a post
+3. Use \`/pick\` to set one as the post's featured image
+
+**Commands:**
+\`/register\` — Save your WordPress credentials (DMs only)
+\`/unregister\` — Remove your stored credentials
+\`/whoami\` — Check your registered credentials
+\`/generate post_id [model] [image_model] [hint]\` — Generate 5 thumbnail options
+\`/pick post_id image\` — Upload an image and set it as featured
+\`/help\` — Show this message
+
+**Tips:**
+- \`post_id\` accepts a numeric ID, a wp-admin URL, or a published post URL
+- Use \`--hint\` to guide the visual metaphor (e.g. "two models competing")
+- Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)`;
+
 export function handleInteraction(body: any) {
   const commandName = body.data?.name;
+
+  // Immediate responses (no async work)
+  if (commandName === "help") {
+    return {
+      type: CHANNEL_MESSAGE,
+      data: { content: HELP_TEXT, flags: EPHEMERAL },
+    };
+  }
 
   // Reject /register in guild channels immediately (no async work needed)
   if (commandName === "register" && isInGuild(body)) {
