@@ -227,6 +227,7 @@ async function editOriginalMessage(
 async function handleGenerate(interaction: any) {
   const token = interaction.token;
   const userId = getUserId(interaction);
+  const mention = getUserMention(interaction);
   const rawPostId = getOptionValue(interaction, "post_id") || "";
   const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
   const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
@@ -234,7 +235,6 @@ async function handleGenerate(interaction: any) {
 
   const creds = loadCredentials(userId);
   if (!creds) {
-    const mention = getUserMention(interaction);
     await editOriginalMessage(
       token,
       `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
@@ -244,18 +244,21 @@ async function handleGenerate(interaction: any) {
 
   try {
     const postId = await resolvePostId(creds, rawPostId);
-    const progressMessages: string[] = [];
+    let progress = "";
+    const onProgress = (msg: string) => {
+      progress += msg + "\n";
+      editOriginalMessage(token, `${mention}\n\`\`\`\n${progress}\`\`\``);
+    };
 
     const result = await generateWorkflow(
       { creds, postId, model, imageModel, wide: true, hint },
-      (msg) => progressMessages.push(msg),
+      onProgress,
     );
 
     const promptList = result.prompts
       .map((p, i) => `**${i + 1}.** ${p.scene}`)
       .join("\n");
 
-    const mention = getUserMention(interaction);
     const content = `${mention} **${result.postTitle}**\n\n${promptList}\n\nGenerated ${result.imagePaths.length} images:`;
 
     const files = result.imagePaths.map((p) => ({
@@ -265,7 +268,6 @@ async function handleGenerate(interaction: any) {
 
     await editOriginalMessage(token, content, files);
   } catch (err) {
-    const mention = getUserMention(interaction);
     const msg = err instanceof Error ? err.message : String(err);
     await editOriginalMessage(token, `${mention} Generation failed: ${msg}`);
   }
@@ -308,6 +310,7 @@ async function handlePick(interaction: any) {
 
 async function handleImprove(interaction: any) {
   const token = interaction.token;
+  const mention = getUserMention(interaction);
   const rawPostId = getOptionValue(interaction, "post_id") || "";
   const imageUrl = getOptionValue(interaction, "image_url") || "";
   const prompt = getOptionValue(interaction, "prompt") || "";
@@ -327,11 +330,17 @@ async function handleImprove(interaction: any) {
 
     const outputDir = path.join(OUTPUT_DIR, rawPostId);
 
+    let progress = "";
+    const onProgress = (msg: string) => {
+      progress += msg + "\n";
+      editOriginalMessage(token, `${mention}\n\`\`\`\n${progress}\`\`\``);
+    };
+
     const result = await improveWorkflow(
       { sourceImagePath: tempFile, prompt, imageModel, outputDir },
+      onProgress,
     );
 
-    const mention = getUserMention(interaction);
     const content = `${mention} Improved image with: "${prompt}"\n\nGenerated ${result.imagePaths.length} variants:`;
 
     const files = result.imagePaths.map((p) => ({
@@ -341,7 +350,6 @@ async function handleImprove(interaction: any) {
 
     await editOriginalMessage(token, content, files);
   } catch (err) {
-    const mention = getUserMention(interaction);
     const msg = err instanceof Error ? err.message : String(err);
     await editOriginalMessage(token, `${mention} Improve failed: ${msg}`);
   } finally {
@@ -437,7 +445,8 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 - \`post_id\` accepts a numeric ID, a wp-admin URL, or a published post URL
 - Use \`--hint\` to guide the visual metaphor (e.g. "two models competing")
 - Use \`/improve\` to tweak a generated image — copy its URL from \`/generate\` output
-- Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)`;
+- Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)
+- \`/generate\` and \`/improve\` show live progress updates while images are being generated`;
 
 export function handleInteraction(body: any) {
   const commandName = body.data?.name;

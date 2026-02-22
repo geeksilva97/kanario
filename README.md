@@ -189,6 +189,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate`, `/improve`, and `/pick` results are visible to the channel.
 
+`/generate` and `/improve` show live progress updates in the deferred message while images are being generated. Each workflow step replaces the message content with an accumulated log inside a code block. The final message with attached images replaces the progress log.
+
 ### Health check
 
 ```
