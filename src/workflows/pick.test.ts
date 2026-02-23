@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { pickWorkflow } from "./pick.ts";
 import type { WPCredentials } from "../credentials.ts";
+import { FileError, WordPressError } from "../errors.ts";
 
 const fakeCreds: WPCredentials = {
   wpUrl: "https://blog.codeminer42.com",
@@ -22,10 +23,15 @@ describe("pickWorkflow", () => {
     }
   });
 
-  it("throws when file does not exist", async () => {
+  it("throws FileError when file does not exist", async () => {
     await assert.rejects(
       () => pickWorkflow({ creds: fakeCreds, postId: "123", imagePath: "/nonexistent/image.png" }),
-      { message: /Image not found: \/nonexistent\/image\.png/ },
+      (err: any) => {
+        assert.ok(FileError.is(err));
+        assert.equal(err.type, "image_not_found");
+        assert.match(err.message, /Image not found: \/nonexistent\/image\.png/);
+        return true;
+      },
     );
   });
 
@@ -55,7 +61,7 @@ describe("pickWorkflow", () => {
     assert.equal(result.mediaId, 42);
   });
 
-  it("throws when upload fails", async (t) => {
+  it("throws WordPressError when upload fails", async (t) => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-pick-test-"));
     tmpImage = path.join(tmpDir, "test.png");
     fs.writeFileSync(tmpImage, "fake-png");
@@ -66,7 +72,12 @@ describe("pickWorkflow", () => {
 
     await assert.rejects(
       () => pickWorkflow({ creds: fakeCreds, postId: "123", imagePath: tmpImage }),
-      { message: /Failed to upload media: 500 Internal Server Error/ },
+      (err: any) => {
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_upload_failed");
+        assert.match(err.message, /Failed to upload media: 500 Internal Server Error/);
+        return true;
+      },
     );
   });
 });

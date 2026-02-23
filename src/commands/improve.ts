@@ -3,6 +3,7 @@ import { OUTPUT_DIR } from "../config.ts";
 import { resolveImagePath } from "./pick.ts";
 import { improveWorkflow } from "../workflows/improve.ts";
 import type { ImageModel } from "../image-backend.ts";
+import { formatError } from "../error-reporter.ts";
 
 export async function improve(
   positionals: string[],
@@ -41,7 +42,7 @@ export async function improve(
 
     process.exit(0);
   } catch (err) {
-    console.error(err instanceof Error ? err.message : err);
+    console.error(formatError(err));
     process.exit(1);
   }
 }

@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { WPCredentials } from "../credentials.ts";
 import type { CommandDeps } from "./command-deps.ts";
+import { formatError } from "../error-reporter.ts";
 
 // Discord interaction response types
 const DEFERRED_CHANNEL_MESSAGE = 5;
@@ -231,8 +232,7 @@ export function makeCommandHandler(deps: CommandDeps) {
 
       await discord.editOriginalMessage(token, content, files);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      await discord.editOriginalMessage(token, `${mention} Generation failed: ${msg}`);
+      await discord.editOriginalMessage(token, `${mention} Generation failed: ${formatError(err)}`);
     }
   }
 
@@ -266,8 +266,7 @@ export function makeCommandHandler(deps: CommandDeps) {
       );
     } catch (err) {
       const mention = getUserMention(interaction);
-      const msg = err instanceof Error ? err.message : String(err);
-      await discord.editOriginalMessage(token, `${mention} Pick failed: ${msg}`);
+      await discord.editOriginalMessage(token, `${mention} Pick failed: ${formatError(err)}`);
     }
   }
 
@@ -315,8 +314,7 @@ export function makeCommandHandler(deps: CommandDeps) {
 
       await discord.editOriginalMessage(token, content, files);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      await discord.editOriginalMessage(token, `${mention} Improve failed: ${msg}`);
+      await discord.editOriginalMessage(token, `${mention} Improve failed: ${formatError(err)}`);
     } finally {
       if (downloaded) {
         downloaded.cleanup();

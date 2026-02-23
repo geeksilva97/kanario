@@ -3,6 +3,7 @@ import path from "node:path";
 import { config } from "../config.ts";
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
 import type { ImageModel } from "../image-backend.ts";
+import { FileError, ConfigError } from "../errors.ts";
 
 export interface ImproveOptions {
   sourceImagePath: string;
@@ -40,7 +41,7 @@ export async function improveWorkflow(
 
   // Validate source image exists
   if (!fs.existsSync(sourceImagePath)) {
-    throw new Error(`Image not found: ${sourceImagePath}`);
+    throw FileError.imageNotFound(sourceImagePath);
   }
 
   // Validate required env vars
@@ -48,7 +49,7 @@ export async function improveWorkflow(
   if (imageModel === "qwen" && !config.runpodApiKey) missing.push("RUNPOD_API_KEY");
   if (imageModel === "nano-banana" && !config.geminiApiKey) missing.push("GEMINI_API_KEY");
   if (missing.length > 0) {
-    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+    throw ConfigError.missingEnvVars(missing);
   }
 
   const backend = createImageBackend(imageModel);

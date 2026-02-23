@@ -2,6 +2,7 @@ import type { ImageModel } from "../image-backend.ts";
 import { credentialsFromEnv } from "../credentials.ts";
 import { resolvePostId } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
+import { formatError } from "../error-reporter.ts";
 
 export async function generate(
   positionals: string[],
@@ -38,7 +39,7 @@ export async function generate(
     console.log(`\nDone! Generated ${result.imagePaths.length} images in ${result.outputDir}`);
     process.exit(0);
   } catch (err) {
-    console.error(err instanceof Error ? err.message : err);
+    console.error(formatError(err));
     process.exit(1);
   }
 }

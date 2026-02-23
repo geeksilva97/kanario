@@ -4,6 +4,7 @@ import sharp from "sharp";
 import type { ImageBackend, ImageModel } from "./image-backend.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
 import { createNanoBananaBackend } from "./nano-banana-backend.ts";
+import { ImageBackendError } from "./errors.ts";
 
 export interface GenerateImageOptions {
   prompt: string;
@@ -29,7 +30,7 @@ const CANVAS_HEIGHT = 720;
 export async function padToWidescreen(mascotPath: string): Promise<string> {
   const mascot = sharp(mascotPath);
   const { width, height } = await mascot.metadata();
-  if (!width || !height) throw new Error(`Cannot read dimensions of ${mascotPath}`);
+  if (!width || !height) throw ImageBackendError.unreadableMascot(mascotPath);
 
   const scale = Math.min(CANVAS_HEIGHT / height, CANVAS_WIDTH / 3 / width);
   const resized = await mascot.resize(Math.round(width * scale), Math.round(height * scale)).toBuffer();
@@ -55,7 +56,7 @@ export function createImageBackend(model: ImageModel): ImageBackend {
   switch (model) {
     case "qwen": return createQwenBackend();
     case "nano-banana": return createNanoBananaBackend();
-    default: throw new Error(`Unknown image model "${model}". Choose "qwen" or "nano-banana".`);
+    default: throw ImageBackendError.unknownModel(model);
   }
 }
 

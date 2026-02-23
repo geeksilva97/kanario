@@ -4,6 +4,7 @@ import { OUTPUT_DIR } from "../config.ts";
 import { credentialsFromEnv } from "../credentials.ts";
 import { fetchDraft, resolvePostId } from "../wordpress.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
+import { formatError } from "../error-reporter.ts";
 
 export function resolveImagePath(postId: string, imageArg: string): string {
   if (/^\d+[a-z]?$/.test(imageArg)) {
@@ -53,7 +54,7 @@ export async function pick(positionals: string[]) {
     console.log(`\nDone! Featured image set for "${post.title}".`);
     process.exit(0);
   } catch (err) {
-    console.error(err instanceof Error ? err.message : err);
+    console.error(formatError(err));
     process.exit(1);
   }
 }

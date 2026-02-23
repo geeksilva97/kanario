@@ -8,6 +8,7 @@ import { generatePrompts as geminiGeneratePrompts } from "../gemini-generator.ts
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
 import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
+import { ConfigError } from "../errors.ts";
 
 export interface GenerateOptions {
   creds: WPCredentials;
@@ -34,7 +35,7 @@ export async function generateWorkflow(
   const log = onProgress ?? (() => {});
 
   if (model !== "claude" && model !== "gemini") {
-    throw new Error(`Unknown model "${model}". Choose "claude" or "gemini".`);
+    throw ConfigError.unknownModel(model);
   }
 
   // Validate required config
@@ -44,7 +45,7 @@ export async function generateWorkflow(
   if (imageModel === "nano-banana" && !config.geminiApiKey) missing.push("GEMINI_API_KEY");
   if (imageModel === "qwen" && !config.runpodApiKey) missing.push("RUNPOD_API_KEY");
   if (missing.length > 0) {
-    throw new Error(`Missing environment variables: ${missing.join(", ")}`);
+    throw ConfigError.missingEnvVars(missing);
   }
 
   const backend = createImageBackend(imageModel);

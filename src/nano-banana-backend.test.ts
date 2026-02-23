@@ -18,6 +18,7 @@ mock.module("@google/genai", {
 });
 
 const { createNanoBananaBackend } = await import("./nano-banana-backend.ts");
+const { ImageBackendError } = await import("./errors.ts");
 
 describe("NanoBananaBackend", () => {
   let tmpDir: string;
@@ -99,7 +100,7 @@ describe("NanoBananaBackend", () => {
     assert.equal(parts[0].text, "scene only prompt");
   });
 
-  it("throws when response has no image data", async (t) => {
+  it("throws ImageBackendError when response has no image data", async (t) => {
     t.mock.method(console, "log", () => {});
     generateContentImpl = async () => ({
       candidates: [{
@@ -113,7 +114,12 @@ describe("NanoBananaBackend", () => {
     const backend = createNanoBananaBackend();
     await assert.rejects(
       () => backend.generate({ prompt: "fail", seed: -1, wide: false }),
-      { message: /Nano Banana returned no image data/ },
+      (err: any) => {
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "no_image_data");
+        assert.match(err.message, /Nano Banana returned no image data/);
+        return true;
+      },
     );
   });
 

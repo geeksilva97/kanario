@@ -8,6 +8,7 @@ import { createImageBackend, padToWidescreen, encodeMascot, generateSingleImage,
 import { createQwenBackend } from "./qwen-backend.ts";
 import { createNanoBananaBackend } from "./nano-banana-backend.ts";
 import type { ImageBackend } from "./image-backend.ts";
+import { ImageBackendError } from "./errors.ts";
 
 describe("ImageBackend", () => {
   it("createQwenBackend returns an object with generate method", () => {
@@ -30,10 +31,15 @@ describe("ImageBackend", () => {
     assert.equal(typeof backend.generate, "function");
   });
 
-  it("createImageBackend throws on invalid model", () => {
+  it("createImageBackend throws ImageBackendError on invalid model", () => {
     assert.throws(
       () => createImageBackend("invalid" as any),
-      { message: /Unknown image model "invalid"/ },
+      (err: any) => {
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "unknown_image_model");
+        assert.match(err.message, /Unknown image model "invalid"/);
+        return true;
+      },
     );
   });
 });

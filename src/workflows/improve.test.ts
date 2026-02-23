@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
 import { nextPromptNumber, improveWorkflow } from "./improve.ts";
+import { FileError, ConfigError } from "../errors.ts";
 
 describe("nextPromptNumber", () => {
   let tmpDir: string;
@@ -54,18 +55,23 @@ describe("improveWorkflow", () => {
     fs.rmSync(tmpDir, { recursive: true });
   });
 
-  it("throws when source image does not exist", async () => {
+  it("throws FileError when source image does not exist", async () => {
     await assert.rejects(
       () => improveWorkflow({
         sourceImagePath: "/nonexistent/image.png",
         prompt: "make it better",
         outputDir: "/tmp",
       }),
-      { message: /Image not found: \/nonexistent\/image\.png/ },
+      (err: any) => {
+        assert.ok(FileError.is(err));
+        assert.equal(err.type, "image_not_found");
+        assert.match(err.message, /Image not found: \/nonexistent\/image\.png/);
+        return true;
+      },
     );
   });
 
-  it("throws when RUNPOD_API_KEY is missing for qwen", async () => {
+  it("throws ConfigError when RUNPOD_API_KEY is missing for qwen", async () => {
     await assert.rejects(
       () => improveWorkflow({
         sourceImagePath: tmpImage,
@@ -73,11 +79,16 @@ describe("improveWorkflow", () => {
         imageModel: "qwen",
         outputDir: tmpDir,
       }),
-      { message: /RUNPOD_API_KEY/ },
+      (err: any) => {
+        assert.ok(ConfigError.is(err));
+        assert.equal(err.type, "missing_env_vars");
+        assert.match(err.message, /RUNPOD_API_KEY/);
+        return true;
+      },
     );
   });
 
-  it("throws when GEMINI_API_KEY is missing for nano-banana", async () => {
+  it("throws ConfigError when GEMINI_API_KEY is missing for nano-banana", async () => {
     await assert.rejects(
       () => improveWorkflow({
         sourceImagePath: tmpImage,
@@ -85,7 +96,12 @@ describe("improveWorkflow", () => {
         imageModel: "nano-banana",
         outputDir: tmpDir,
       }),
-      { message: /GEMINI_API_KEY/ },
+      (err: any) => {
+        assert.ok(ConfigError.is(err));
+        assert.equal(err.type, "missing_env_vars");
+        assert.match(err.message, /GEMINI_API_KEY/);
+        return true;
+      },
     );
   });
 });

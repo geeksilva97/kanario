@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { WPCredentials } from "../credentials.ts";
 import { uploadMedia, setFeaturedImage } from "../wordpress.ts";
+import { FileError } from "../errors.ts";
 
 export interface PickOptions {
   creds: WPCredentials;
@@ -18,7 +19,7 @@ export async function pickWorkflow(options: PickOptions): Promise<PickResult> {
 
   // Validate file exists (cheap local check first)
   if (!fs.existsSync(imagePath)) {
-    throw new Error(`Image not found: ${imagePath}`);
+    throw FileError.imageNotFound(imagePath);
   }
 
   // Upload

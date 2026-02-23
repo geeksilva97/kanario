@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import sharp from "sharp";
 import { createQwenBackend } from "./qwen-backend.ts";
+import { ImageBackendError } from "./errors.ts";
 
 describe("QwenBackend", () => {
   let tmpDir: string;
@@ -104,7 +105,7 @@ describe("QwenBackend", () => {
     assert.equal(submitBody.input.seed, 42);
   });
 
-  it("throws when job fails", async (t) => {
+  it("throws ImageBackendError when job fails", async (t) => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
@@ -125,11 +126,17 @@ describe("QwenBackend", () => {
     const backend = createQwenBackend();
     await assert.rejects(
       () => backend.generate({ prompt: "fail test", seed: -1, wide: false }),
-      { message: /RunPod job job-fail failed/ },
+      (err: any) => {
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "runpod_job_failed");
+        assert.match(err.message, /RunPod job job-fail failed/);
+        assert.equal(err.meta.jobId, "job-fail");
+        return true;
+      },
     );
   });
 
-  it("throws on API error during submit", async (t) => {
+  it("throws ImageBackendError on API error during submit", async (t) => {
     t.mock.method(console, "log", () => {});
 
     t.mock.method(globalThis, "fetch", () =>
@@ -139,11 +146,16 @@ describe("QwenBackend", () => {
     const backend = createQwenBackend();
     await assert.rejects(
       () => backend.generate({ prompt: "error test", seed: -1, wide: false }),
-      { message: /RunPod API error 500/ },
+      (err: any) => {
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "runpod_api_error");
+        assert.match(err.message, /RunPod API error 500/);
+        return true;
+      },
     );
   });
 
-  it("throws when image download fails", async (t) => {
+  it("throws ImageBackendError when image download fails", async (t) => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
@@ -167,7 +179,12 @@ describe("QwenBackend", () => {
     const backend = createQwenBackend();
     await assert.rejects(
       () => backend.generate({ prompt: "download fail", seed: -1, wide: false }),
-      { message: /Failed to download image: 404/ },
+      (err: any) => {
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "download_failed");
+        assert.match(err.message, /Failed to download image: 404/);
+        return true;
+      },
     );
   });
 });

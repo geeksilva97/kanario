@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import type { WPCredentials } from "./credentials.ts";
+import { WordPressError } from "./errors.ts";
 
 export interface WPPost {
   title: string;
@@ -52,14 +53,12 @@ async function fetchPostIdBySlug(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to look up slug "${slug}": ${response.status} ${response.statusText}`,
-    );
+    throw WordPressError.slugLookupFailed(slug, response.status, response.statusText);
   }
 
   const data = await response.json();
   if (!Array.isArray(data) || data.length === 0) {
-    throw new Error(`No post found with slug "${slug}"`);
+    throw WordPressError.slugNotFound(slug);
   }
 
   return String(data[0].id);
@@ -82,7 +81,7 @@ export async function resolvePostId(
   } catch (err) {
     if (err instanceof TypeError) {
       // new URL() failed — not a valid URL
-      throw new Error(`Cannot resolve post from input: ${input}`);
+      throw WordPressError.unresolvableInput(input);
     }
     throw err;
   }
@@ -102,9 +101,7 @@ export async function fetchDraft(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch post ${postId}: ${response.status} ${response.statusText}`,
-    );
+    throw WordPressError.fetchFailed(postId, response.status, response.statusText);
   }
 
   const data = await response.json();
@@ -137,9 +134,7 @@ export async function uploadMedia(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to upload media: ${response.status} ${response.statusText}`,
-    );
+    throw WordPressError.uploadFailed(response.status, response.statusText);
   }
 
   const data = await response.json();
@@ -164,8 +159,6 @@ export async function setFeaturedImage(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to set featured image: ${response.status} ${response.statusText}`,
-    );
+    throw WordPressError.setFeaturedFailed(response.status, response.statusText);
   }
 }

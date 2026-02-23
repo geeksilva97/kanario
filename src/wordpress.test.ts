@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { stripHtml, parsePostId, resolvePostId, fetchDraft, uploadMedia, setFeaturedImage } from "./wordpress.ts";
 import type { WPCredentials } from "./credentials.ts";
+import { WordPressError } from "./errors.ts";
 
 const fakeCreds: WPCredentials = {
   wpUrl: "https://blog.codeminer42.com",
@@ -95,14 +96,20 @@ describe("resolvePostId", () => {
     assert.ok(calledUrl.includes("slug=some-slug"));
   });
 
-  it("throws when slug lookup returns no matches", async (t) => {
+  it("throws WordPressError when slug lookup returns no matches", async (t) => {
     t.mock.method(globalThis, "fetch", () =>
       Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
     );
 
     await assert.rejects(
       () => resolvePostId(fakeCreds, "https://blog.codeminer42.com/nonexistent-post/"),
-      { message: /No post found with slug "nonexistent-post"/ },
+      (err: any) => {
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_slug_not_found");
+        assert.match(err.message, /No post found with slug "nonexistent-post"/);
+        assert.deepEqual(err.meta, { slug: "nonexistent-post" });
+        return true;
+      },
     );
   });
 
@@ -129,10 +136,16 @@ describe("resolvePostId", () => {
     assert.ok(calledUrl.includes("slug=category%2Fpost-slug"));
   });
 
-  it("throws for a bare slug without URL scheme", async () => {
+  it("throws WordPressError for a bare slug without URL scheme", async () => {
     await assert.rejects(
       () => resolvePostId(fakeCreds, "just-a-slug"),
-      { message: /Cannot resolve post from input: just-a-slug/ },
+      (err: any) => {
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_unresolvable_input");
+        assert.match(err.message, /Cannot resolve post from input: just-a-slug/);
+        assert.deepEqual(err.meta, { input: "just-a-slug" });
+        return true;
+      },
     );
   });
 });
@@ -161,14 +174,20 @@ describe("fetchDraft", () => {
     assert.equal(calledInit.headers.Authorization, `Basic ${expectedAuth}`);
   });
 
-  it("throws on non-200 response", async (t) => {
+  it("throws WordPressError on non-200 response", async (t) => {
     t.mock.method(globalThis, "fetch", () =>
       Promise.resolve(new Response("Not Found", { status: 404, statusText: "Not Found" })),
     );
 
     await assert.rejects(
       () => fetchDraft(fakeCreds, "999"),
-      { message: /Failed to fetch post 999: 404 Not Found/ },
+      (err: any) => {
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_fetch_failed");
+        assert.match(err.message, /Failed to fetch post 999: 404 Not Found/);
+        assert.deepEqual(err.meta, { postId: "999", status: 404, statusText: "Not Found" });
+        return true;
+      },
     );
   });
 });
@@ -208,14 +227,19 @@ describe("uploadMedia", () => {
     assert.equal(calledInit.headers.Authorization, `Basic ${expectedAuth}`);
   });
 
-  it("throws on non-200 response", async (t) => {
+  it("throws WordPressError on non-200 response", async (t) => {
     t.mock.method(globalThis, "fetch", () =>
       Promise.resolve(new Response("Error", { status: 500, statusText: "Internal Server Error" })),
     );
 
     await assert.rejects(
       () => uploadMedia(fakeCreds, tmpImage, "cover.png"),
-      { message: /Failed to upload media: 500 Internal Server Error/ },
+      (err: any) => {
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_upload_failed");
+        assert.match(err.message, /Failed to upload media: 500 Internal Server Error/);
+        return true;
+      },
     );
   });
 });
@@ -238,14 +262,19 @@ describe("setFeaturedImage", () => {
     assert.deepEqual(JSON.parse(calledInit.body), { featured_media: 42 });
   });
 
-  it("throws on non-200 response", async (t) => {
+  it("throws WordPressError on non-200 response", async (t) => {
     t.mock.method(globalThis, "fetch", () =>
       Promise.resolve(new Response("Error", { status: 403, statusText: "Forbidden" })),
     );
 
     await assert.rejects(
       () => setFeaturedImage(fakeCreds, "123", 42),
-      { message: /Failed to set featured image: 403 Forbidden/ },
+      (err: any) => {
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_set_featured_failed");
+        assert.match(err.message, /Failed to set featured image: 403 Forbidden/);
+        return true;
+      },
     );
   });
 });

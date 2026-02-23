@@ -44,6 +44,8 @@ src/
 ├── index.ts                  # CLI entry point, parseArgs
 ├── config.ts                 # Env vars, mascot paths, style template, constants
 ├── credentials.ts            # WPCredentials interface, validateWPCredentials, credentialsFromEnv
+├── errors.ts                 # KanarioError base + domain subclasses (WordPressError, ImageBackendError, ConfigError, FileError)
+├── error-reporter.ts         # formatError() — message + actionable hints dispatched by error type
 ├── store.ts                  # SQLite-backed credential store with AES-256-GCM encryption (node:sqlite)
 ├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml (all take WPCredentials)
 ├── prompt-generator.ts       # Claude prompt generation, shared SYSTEM_PROMPT + buildFullPrompt
@@ -99,6 +101,7 @@ src/
 - **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT` and `buildFullPrompt` from `prompt-generator.ts`. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
 - **Two mascots + none**: `miner` (mascot3d.png), `hat` (mascot-hat.png), or `none` (no mascot) — the LLM picks per prompt.
 - **Secondary characters** — use "cute round-bodied bot buddy" (never "robot" — Qwen confuses it with the mascot). Seed is `-1` (Qwen picks random).
+- **Custom error classes** — all errors use `KanarioError` subclasses (`WordPressError`, `ImageBackendError`, `ConfigError`, `FileError`) with `type` (machine-readable), `meta` (structured context), and static factory methods. Catch sites use `formatError(err)` from `error-reporter.ts` which appends actionable hints based on error type and metadata (e.g. "Check WP_USERNAME..." for 401s). Each class has a static `is()` type guard for dispatch.
 - **Discord command handler uses dependency injection** — `makeCommandHandler(deps)` is a factory that takes a `CommandDeps` object (credential store, Discord messenger, WordPress client, workflows, image downloader). `server.ts` is the composition root that wires real implementations. Tests inject mocks directly via the factory — no module mocking needed. Interfaces live in `command-deps.ts`.
 
 ## Testing

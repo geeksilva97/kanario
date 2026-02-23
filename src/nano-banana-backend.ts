@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import fs from "node:fs";
 import { config } from "./config.ts";
 import type { ImageBackend } from "./image-backend.ts";
+import { ImageBackendError } from "./errors.ts";
 
 const MAX_RETRIES = 6;
 const INITIAL_BACKOFF_MS = 5_000;
@@ -40,7 +41,7 @@ export function createNanoBananaBackend(): ImageBackend {
             (p: any) => p.inlineData,
           );
           if (!imagePart?.inlineData?.data) {
-            throw new Error("Nano Banana returned no image data");
+            throw ImageBackendError.noImageData();
           }
           console.log(`    Received image from Nano Banana`);
           return Buffer.from(imagePart.inlineData.data, "base64");
@@ -55,7 +56,7 @@ export function createNanoBananaBackend(): ImageBackend {
         }
       }
 
-      throw new Error("Nano Banana: exhausted all retries");
+      throw ImageBackendError.retriesExhausted(MAX_RETRIES);
     },
   };
 }
