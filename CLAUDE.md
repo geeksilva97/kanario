@@ -77,7 +77,8 @@ src/
 
 ## Code conventions
 
-- **TypeScript with native stripping** — no build step, Node runs `.ts` directly. Use `.ts` extensions in all imports. Also uses native `node:sqlite`.
+- **Node.js >= 24** — TypeScript stripping, `node:sqlite`, and `node:test` are all stable. Only `--experimental-test-module-mocks` remains (for `mock.module()` in tests).
+- **TypeScript with native stripping** — no build step, Node runs `.ts` directly. Use `.ts` extensions in all imports.
 - **`verbatimModuleSyntax`** — use `import type` for type-only imports.
 - **Node.js built-in test runner** (`node:test` + `node:assert/strict`) — no Jest/Vitest.
 - **ESM only** (`"type": "module"` in package.json).
@@ -124,7 +125,7 @@ src/
 - **`t.mock.method(console, "log", () => {})` — suppress noisy console output in tests that exercise code with `console.log` calls (e.g. image backends).
 - **Temp files** — use `fs.mkdtempSync` in `beforeEach` and `fs.rmSync(dir, { recursive: true })` in `afterEach` for tests that need real files on disk (e.g. `uploadMedia` reads the file with `fs.readFileSync`, Qwen/Nano Banana tests need a valid PNG for `sharp`). Create minimal test PNGs with `sharp({ create: { width: 100, height: 100, ... } }).png().toBuffer()`.
 - **Factory + dependency injection** — `commands.test.ts` uses `makeCommandHandler(mockDeps)` to inject mock implementations directly (no `mock.module` needed). A `makeMockDeps()` helper creates all mocks with call tracking. Fire-and-forget async handlers are tested with a `tick()` helper (`setTimeout(resolve, 10)`) to let the event loop flush.
-- **Fastify `inject()`** — test HTTP routes without starting a real server. For Discord signature verification: generate an Ed25519 keypair at module level, override `(config as any).discordPublicKey` with the test public key, sign payloads with the test private key.
+- **Fastify `inject()`** — test HTTP routes without starting a real server. For Discord signature verification: generate an Ed25519 keypair at module level, override `config.discordPublicKey` via `Object.defineProperty` (readonly config), sign payloads with the test private key.
 - **Config validation** — since tests run without `.env`, all `config.*ApiKey` values default to `""`. Tests for missing env var errors just call the workflow with valid model names and assert the error message contains the expected variable name.
 
 ## Important rules
