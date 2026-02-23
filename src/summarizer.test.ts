@@ -1,7 +1,20 @@
-import { describe, it } from "node:test";
+import { describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
-import { summarizePost } from "./summarizer.ts";
 import { config } from "./config.ts";
+
+// File-level mock: swap implementation per test via shared variable
+let generateContentImpl: (opts: Record<string, unknown>) => Promise<unknown>;
+
+// @ts-expect-error — mock.module requires --experimental-test-module-mocks
+mock.module("@google/genai", {
+  namedExports: {
+    GoogleGenAI: class {
+      models = { generateContent: (opts: Record<string, unknown>) => generateContentImpl(opts) };
+    },
+  },
+});
+
+const { summarizePost } = await import("./summarizer.ts");
 
 describe("summarizePost", () => {
   const fakePost = {
@@ -11,18 +24,19 @@ describe("summarizePost", () => {
   };
 
   it("returns a summary string via gemini", async (t) => {
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify({
-        candidates: [{ content: { parts: [{ text: "Core thesis: DI decouples components.\n- Benefit 1\n- Benefit 2" }] } }],
-      }), { status: 200, headers: { "Content-Type": "application/json" } })),
-    );
+    const spy = t.mock.fn(async () => ({
+      text: "Core thesis: DI decouples components.\n- Benefit 1\n- Benefit 2",
+    }));
+    generateContentImpl = spy;
 
     const summary = await summarizePost(fakePost, "gemini");
     assert.equal(typeof summary, "string");
     assert.ok(summary.length > 0);
+    assert.ok(summary.includes("DI decouples components"));
+    assert.equal(spy.mock.callCount(), 1);
   });
 
-  it("calls claude path when model is claude (requires ANTHROPIC_API_KEY)", async (t) => {
+  it("calls claude path when model is claude (requires ANTHROPIC_API_KEY)", async () => {
     // The Anthropic SDK uses node-fetch internally (not globalThis.fetch),
     // so we can't mock it with t.mock.method. Instead verify it throws
     // the expected auth error when no API key is configured.
