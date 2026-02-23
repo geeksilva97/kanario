@@ -38,7 +38,7 @@ export function createNanoBananaBackend(): ImageBackend {
           });
 
           const imagePart = response.candidates?.[0]?.content?.parts?.find(
-            (p: any) => p.inlineData,
+            (p) => "inlineData" in p,
           );
           if (!imagePart?.inlineData?.data) {
             throw ImageBackendError.noImageData();

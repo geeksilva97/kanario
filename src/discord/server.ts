@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
 import { config, OUTPUT_DIR } from "../config.ts";
 import { validateWPCredentials, createWpClient } from "../credentials.ts";
 import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
@@ -28,6 +28,7 @@ export async function verifySignature(
 ): Promise<boolean> {
   const key = await crypto.subtle.importKey(
     "raw",
+    // TS 5.7+ Uint8Array generic breaks BufferSource compat: https://github.com/nicolo-ribaudo/tc39-proposal-safe-uint8array-methods
     hexToUint8Array(publicKeyHex) as BufferSource,
     "Ed25519",
     false,
@@ -39,6 +40,7 @@ export async function verifySignature(
   return crypto.subtle.verify(
     "Ed25519",
     key,
+    // Same TS 5.7+ Uint8Array compat issue as above
     hexToUint8Array(signature) as BufferSource,
     message,
   );
@@ -82,8 +84,9 @@ export function buildApp() {
     },
   );
 
-  async function handlePost(request: any, reply: any) {
-    const rawBody = request.body as string;
+  async function handlePost(request: FastifyRequest<{ Body: string }>, reply: FastifyReply) {
+    const rawBody = request.body;
+    // Fastify types headers as string | string[] | undefined — Discord always sends single strings
     const signature = request.headers["x-signature-ed25519"] as string;
     const timestamp = request.headers["x-signature-timestamp"] as string;
 

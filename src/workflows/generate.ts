@@ -11,6 +11,12 @@ import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
 import { ConfigError } from "../errors.ts";
 
+function toMascotId(mascot: string): MascotId {
+  // `in` check guards this, but TS doesn't narrow string → keyof
+  // https://github.com/microsoft/TypeScript/issues/43284
+  return mascot in MASCOTS ? (mascot as MascotId) : "miner";
+}
+
 export interface GenerateOptions {
   wpHttp: HttpClient;
   postId: string;
@@ -82,7 +88,7 @@ export async function generateWorkflow(
 
   const jobs = result.prompts.map((prompt, i) => {
     const isNone = prompt.mascot === "none";
-    const mascotId = isNone ? undefined : (prompt.mascot in MASCOTS ? prompt.mascot : "miner") as MascotId;
+    const mascotId = isNone ? undefined : toMascotId(prompt.mascot);
     return {
       prompt: prompt.full_prompt,
       ...(mascotId ? { mascotPath: MASCOTS[mascotId] } : {}),

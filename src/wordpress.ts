@@ -42,7 +42,7 @@ async function fetchPostIdBySlug(
     response = await http.request(`/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`);
   } catch (err) {
     if (HttpError.is(err)) {
-      throw WordPressError.slugLookupFailed(slug, err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+      throw WordPressError.slugLookupFailed(slug, err.meta.status, err.meta.statusText, err.meta.body);
     }
     throw err;
   }
@@ -87,7 +87,7 @@ export async function fetchDraft(
     response = await http.request(`/posts/${postId}`);
   } catch (err) {
     if (HttpError.is(err)) {
-      throw WordPressError.fetchFailed(postId, err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+      throw WordPressError.fetchFailed(postId, err.meta.status, err.meta.statusText, err.meta.body);
     }
     throw err;
   }
@@ -120,7 +120,7 @@ export async function uploadMedia(
     });
   } catch (err) {
     if (HttpError.is(err)) {
-      throw WordPressError.uploadFailed(err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+      throw WordPressError.uploadFailed(err.meta.status, err.meta.statusText, err.meta.body);
     }
     throw err;
   }
@@ -144,7 +144,7 @@ export async function setFeaturedImage(
     });
   } catch (err) {
     if (HttpError.is(err)) {
-      throw WordPressError.setFeaturedFailed(err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+      throw WordPressError.setFeaturedFailed(err.meta.status, err.meta.statusText, err.meta.body);
     }
     throw err;
   }

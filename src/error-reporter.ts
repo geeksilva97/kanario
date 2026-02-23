@@ -26,9 +26,8 @@ const WP_STATUS_HINTS: Record<number, string> = {
 
 function getHint(err: KanarioError): string | null {
   if (err instanceof WordPressError) {
-    const wpCode = err.meta.wpCode as string | null | undefined;
+    const { wpCode, status } = err.meta;
     if (wpCode && WP_CODE_HINTS[wpCode]) return WP_CODE_HINTS[wpCode];
-    const status = err.meta.status as number | undefined;
     if (status && WP_STATUS_HINTS[status]) return WP_STATUS_HINTS[status];
     return null;
   }

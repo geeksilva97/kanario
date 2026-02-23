@@ -1,7 +1,11 @@
 import { HttpError } from "./errors.ts";
 
+export interface HttpRequestInit extends Omit<RequestInit, "headers"> {
+  headers?: Record<string, string>;
+}
+
 export interface HttpClient {
-  request(path: string, init?: RequestInit): Promise<Response>;
+  request(path: string, init?: HttpRequestInit): Promise<Response>;
   readonly baseUrl: string;
 }
 
@@ -14,10 +18,10 @@ export function createHttpClient(options: {
 
   return {
     baseUrl,
-    async request(path: string, init?: RequestInit): Promise<Response> {
+    async request(path: string, init?: HttpRequestInit): Promise<Response> {
       const url = /^https?:\/\//.test(path) ? path : `${baseUrl}${path}`;
 
-      const mergedHeaders = { ...defaultHeaders, ...init?.headers as Record<string, string> };
+      const mergedHeaders = { ...defaultHeaders, ...init?.headers };
 
       const signal = timeout ? AbortSignal.timeout(timeout) : undefined;
 

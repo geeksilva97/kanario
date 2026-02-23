@@ -24,6 +24,8 @@ export const SYSTEM_PROMPT = fs.readFileSync(path.join(PROMPTS_DIR, "system.md")
 export function buildFullPrompt(sceneDescription: string, backgroundId: string): string {
   const scene = sceneDescription.replace(/\.$/, "");
   const bg = (backgroundId in BACKGROUND_COLORS
+    // `in` check above guards this, but TS doesn't narrow string → keyof
+    // https://github.com/microsoft/TypeScript/issues/43284
     ? BACKGROUND_COLORS[backgroundId as BackgroundId]
     : BACKGROUND_COLORS.white
   ).prompt;
@@ -95,5 +97,6 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
     throw new Error("Claude did not return a tool_use block");
   }
 
-  return { prompts: mapRawPrompts(toolBlock.input as any) };
+  // Anthropic SDK types toolBlock.input as unknown — shape is guaranteed by the tool schema above
+  return { prompts: mapRawPrompts(toolBlock.input as { prompts: RawPrompt[] }) };
 }

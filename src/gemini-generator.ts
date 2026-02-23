@@ -65,6 +65,7 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
     },
   });
 
+  // JSON.parse returns unknown — shape is guaranteed by responseSchema above
   const raw = JSON.parse(sanitizeJsonResponse(response.text!)) as {
     prompts: RawPrompt[];
   };

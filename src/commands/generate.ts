@@ -16,10 +16,10 @@ export async function generate(
 
   const wpHttp = createWpClient(creds);
   const postId = await resolvePostId(wpHttp, positionals[0]);
-  const model = values.model as string;
-  const imageModel = (values["image-model"] || "qwen") as ImageModel;
+  const model = values.model;
+  const imageModelRaw = values["image-model"] || "qwen";
   const outputDir = values.output;
-  const wide = values["no-wide"] ? false : (values.wide as boolean);
+  const wide = values["no-wide"] ? false : !!values.wide;
   const hint = values.hint;
 
   if (model !== "claude" && model !== "gemini") {
@@ -27,10 +27,11 @@ export async function generate(
     process.exit(1);
   }
 
-  if (imageModel !== "qwen" && imageModel !== "nano-banana") {
-    console.error(`Unknown image model "${imageModel}". Choose "qwen" or "nano-banana".`);
+  if (imageModelRaw !== "qwen" && imageModelRaw !== "nano-banana") {
+    console.error(`Unknown image model "${imageModelRaw}". Choose "qwen" or "nano-banana".`);
     process.exit(1);
   }
+  const imageModel: ImageModel = imageModelRaw;
 
   try {
     const result = await generateWorkflow(

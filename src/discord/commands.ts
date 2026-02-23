@@ -10,6 +10,19 @@ const CHANNEL_MESSAGE = 4;
 // Ephemeral flag — only visible to the invoking user
 const EPHEMERAL = 64;
 
+interface DiscordOption {
+  name: string;
+  value: string;
+}
+
+interface DiscordInteraction {
+  token: string;
+  guild_id?: string;
+  data?: { name: string; options?: DiscordOption[] };
+  member?: { user?: { id: string } };
+  user?: { id: string };
+}
+
 // Slash command definitions (for registration)
 export const COMMAND_DEFINITIONS = [
   {
@@ -162,22 +175,22 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 - Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)
 - \`/generate\` and \`/improve\` show live progress updates while images are being generated`;
 
-function getOptionValue(interaction: any, name: string): string | undefined {
+function getOptionValue(interaction: DiscordInteraction, name: string): string | undefined {
   const options = interaction.data?.options || [];
-  const opt = options.find((o: any) => o.name === name);
+  const opt = options.find((o) => o.name === name);
   return opt?.value;
 }
 
-function getUserId(interaction: any): string {
+function getUserId(interaction: DiscordInteraction): string {
   return interaction.member?.user?.id || interaction.user?.id || "";
 }
 
-function getUserMention(interaction: any): string {
+function getUserMention(interaction: DiscordInteraction): string {
   const userId = getUserId(interaction);
   return userId ? `<@${userId}>` : "";
 }
 
-function isInGuild(interaction: any): boolean {
+function isInGuild(interaction: DiscordInteraction): boolean {
   return !!interaction.guild_id;
 }
 
@@ -186,11 +199,12 @@ const CLOCK_SPINNER = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "
 export function makeCommandHandler(deps: CommandDeps) {
   const { credentialStore, discord, wordpress, workflows, createWpClient, resolveImagePath, outputDir, downloadImage } = deps;
 
-  async function handleGenerate(interaction: any) {
+  async function handleGenerate(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
     const mention = getUserMention(interaction);
     const rawPostId = getOptionValue(interaction, "post_id") || "";
+    // Values are constrained by Discord slash command choices in COMMAND_DEFINITIONS
     const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
     const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
     const hint = getOptionValue(interaction, "hint");
@@ -237,7 +251,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
   }
 
-  async function handlePick(interaction: any) {
+  async function handlePick(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
     const rawPostId = getOptionValue(interaction, "post_id") || "";
@@ -272,12 +286,13 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
   }
 
-  async function handleImprove(interaction: any) {
+  async function handleImprove(interaction: DiscordInteraction) {
     const token = interaction.token;
     const mention = getUserMention(interaction);
     const rawPostId = getOptionValue(interaction, "post_id") || "";
     const imageArg = getOptionValue(interaction, "image") || "";
     const prompt = getOptionValue(interaction, "prompt") || "";
+    // Value is constrained by Discord slash command choices in COMMAND_DEFINITIONS
     const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
 
     let downloaded: { path: string; cleanup: () => void } | undefined;
@@ -324,7 +339,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
   }
 
-  async function handleRegisterAsync(interaction: any) {
+  async function handleRegisterAsync(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
     const wpUrl = (getOptionValue(interaction, "wp_url") || "").replace(/\/+$/, "");
@@ -358,7 +373,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     );
   }
 
-  async function handleUnregisterAsync(interaction: any) {
+  async function handleUnregisterAsync(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
     const deleted = credentialStore.delete(userId);
@@ -371,7 +386,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     );
   }
 
-  async function handleWhoamiAsync(interaction: any) {
+  async function handleWhoamiAsync(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
     const info = credentialStore.getInfo(userId);
@@ -387,7 +402,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     );
   }
 
-  function handleInteraction(body: any) {
+  function handleInteraction(body: DiscordInteraction) {
     const commandName = body.data?.name;
 
     // Immediate responses (no async work)

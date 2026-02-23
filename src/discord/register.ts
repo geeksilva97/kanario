@@ -27,8 +27,9 @@ if (!response.ok) {
   process.exit(1);
 }
 
-const result = await response.json();
-console.log(`Registered ${(result as any[]).length} commands:`);
-for (const cmd of result as any[]) {
+// Discord PUT /commands returns an array — no SDK types for this endpoint
+const result = await response.json() as { name: string; id: string }[];
+console.log(`Registered ${result.length} commands:`);
+for (const cmd of result) {
   console.log(`  /${cmd.name} (${cmd.id})`);
 }

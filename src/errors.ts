@@ -1,8 +1,9 @@
-export class KanarioError extends Error {
+export class KanarioError<M extends Record<string, unknown> = Record<string, unknown>> extends Error {
   readonly type: string;
-  readonly meta: Record<string, unknown>;
+  readonly meta: M;
 
-  constructor(type: string, message: string, meta: Record<string, unknown> = {}) {
+  // {} as M: TS can't prove {} satisfies a generic — safe because all subclass constructors pass real meta
+  constructor(type: string, message: string, meta: M = {} as M) {
     super(message);
     this.name = this.constructor.name;
     this.type = type;
@@ -11,20 +12,6 @@ export class KanarioError extends Error {
 
   static is(err: unknown): err is KanarioError {
     return err instanceof KanarioError;
-  }
-}
-
-export class HttpError extends KanarioError {
-  static is(err: unknown): err is HttpError {
-    return err instanceof HttpError;
-  }
-
-  constructor(method: string, url: string, status: number, statusText: string, body: string) {
-    super(
-      "http_error",
-      `${method} ${url} failed: ${status} ${statusText}`,
-      { method, url, status, statusText, body },
-    );
   }
 }
 
@@ -38,7 +25,38 @@ export function parseWpErrorCode(body: string): string | null {
   return null;
 }
 
-export class WordPressError extends KanarioError {
+export type HttpErrorMeta = {
+  method: string;
+  url: string;
+  status: number;
+  statusText: string;
+  body: string;
+};
+
+export class HttpError extends KanarioError<HttpErrorMeta> {
+  static is(err: unknown): err is HttpError {
+    return err instanceof HttpError;
+  }
+
+  constructor(method: string, url: string, status: number, statusText: string, body: string) {
+    super(
+      "http_error",
+      `${method} ${url} failed: ${status} ${statusText}`,
+      { method, url, status, statusText, body },
+    );
+  }
+}
+
+export type WordPressErrorMeta = {
+  postId?: string;
+  slug?: string;
+  input?: string;
+  status?: number;
+  statusText?: string;
+  wpCode?: string | null;
+};
+
+export class WordPressError extends KanarioError<WordPressErrorMeta> {
   static is(err: unknown): err is WordPressError {
     return err instanceof WordPressError;
   }
@@ -92,7 +110,17 @@ export class WordPressError extends KanarioError {
   }
 }
 
-export class ImageBackendError extends KanarioError {
+export type ImageBackendErrorMeta = {
+  status?: number;
+  body?: string;
+  jobId?: string;
+  statusPayload?: unknown;
+  retries?: number;
+  mascotPath?: string;
+  model?: string;
+};
+
+export class ImageBackendError extends KanarioError<ImageBackendErrorMeta> {
   static is(err: unknown): err is ImageBackendError {
     return err instanceof ImageBackendError;
   }
@@ -154,7 +182,12 @@ export class ImageBackendError extends KanarioError {
   }
 }
 
-export class ConfigError extends KanarioError {
+export type ConfigErrorMeta = {
+  vars?: string[];
+  model?: string;
+};
+
+export class ConfigError extends KanarioError<ConfigErrorMeta> {
   static is(err: unknown): err is ConfigError {
     return err instanceof ConfigError;
   }
@@ -176,7 +209,11 @@ export class ConfigError extends KanarioError {
   }
 }
 
-export class FileError extends KanarioError {
+export type FileErrorMeta = {
+  imagePath?: string;
+};
+
+export class FileError extends KanarioError<FileErrorMeta> {
   static is(err: unknown): err is FileError {
     return err instanceof FileError;
   }
