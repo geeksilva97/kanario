@@ -101,9 +101,21 @@ src/
 
 - Tests are colocated as `*.test.ts` next to their source files (e.g. `src/wordpress.test.ts`) — run with `npm test`.
 - Tests are pure unit tests that don't require env vars or network access (mocked where needed).
+- **No `try`/`catch`/`finally` in tests** — use `beforeEach`/`afterEach` for setup and cleanup (e.g. temp files). For expected errors, use `assert.rejects()` or `assert.throws()`.
 - Integration tests (`test/wordpress.integration.test.ts`) require `.env.test` and hit the real WP API.
 - **Smoke test** (`test/smoke.sh`) — generates thumbnails for 5 fixed posts in parallel, prints summary with mascot/none split, opens output folders. Run after changing `system.md` or generators to evaluate prompt quality visually.
 - **Hint smoke test** (`test/smoke-hint.sh`) — generates thumbnails for 3 posts with specific hints, prints scene titles to verify hint precedence. Run after changing the creative direction section in `system.md`.
+
+### Mocking strategies
+
+- **`globalThis.fetch`** — all WP and RunPod HTTP calls use `globalThis.fetch`, so `t.mock.method(globalThis, "fetch", impl)` intercepts them. For sequential calls (e.g. Qwen submit → poll → download), use a counter variable to return different responses per call. The Anthropic SDK uses `node-fetch` internally, so `globalThis.fetch` mocking does **not** intercept Claude API calls.
+- **`@google/genai` module mock** — the `@google/genai` SDK also calls `globalThis.fetch` under the hood, but mocking at the module level with `mock.module` is cleaner: replace `GoogleGenAI` with a fake class whose `models.generateContent` delegates to a swappable variable. Each test sets the variable to its own implementation before calling the code under test.
+- **File-level `mock.module` + swappable variable** — ESM caches modules, so calling `t.mock.module()` + `await import()` per test only works for the first test (subsequent imports return the cached module). Fix: call `mock.module()` once at file level (imported from `node:test`), use a file-scoped `let impl: Function` variable, `await import()` the module under test once after the mock, and swap `impl` per test. Use `t.mock.fn()` per test to track calls.
+- **`--experimental-test-module-mocks`** — required Node flag for `mock.module()`. Already added to `npm test` and `npm run test:coverage` scripts.
+- **`t.mock.method(console, "log", () => {})` — suppress noisy console output in tests that exercise code with `console.log` calls (e.g. image backends).
+- **Temp files** — use `fs.mkdtempSync` in `beforeEach` and `fs.rmSync(dir, { recursive: true })` in `afterEach` for tests that need real files on disk (e.g. `uploadMedia` reads the file with `fs.readFileSync`, Qwen/Nano Banana tests need a valid PNG for `sharp`). Create minimal test PNGs with `sharp({ create: { width: 100, height: 100, ... } }).png().toBuffer()`.
+- **Fastify `inject()`** — test HTTP routes without starting a real server. For Discord signature verification: generate an Ed25519 keypair at module level, override `(config as any).discordPublicKey` with the test public key, sign payloads with the test private key.
+- **Config validation** — since tests run without `.env`, all `config.*ApiKey` values default to `""`. Tests for missing env var errors just call the workflow with valid model names and assert the error message contains the expected variable name.
 
 ## Important rules
 
