@@ -64,9 +64,12 @@ src/
 │   ├── improve.ts            # Core improve workflow (shared by CLI + Discord)
 │   └── pick.ts               # Core pick workflow (shared by CLI + Discord)
 └── discord/
-    ├── commands.ts           # Discord slash command definitions + interaction handler
+    ├── command-deps.ts       # Dependency interfaces (CredentialStore, DiscordMessenger, WordPressClient, Workflows, CommandDeps)
+    ├── commands.ts           # makeCommandHandler(deps) factory + COMMAND_DEFINITIONS + HELP_TEXT
+    ├── discord-messenger.ts  # makeDiscordMessenger(appId, token) — Discord API edit-message adapter
+    ├── image-downloader.ts   # makeImageDownloader() — URL download to temp file
     ├── register.ts           # One-time slash command registration script
-    └── server.ts             # Fastify server with Ed25519 signature verification
+    └── server.ts             # Fastify server, composition root (wires real deps into command handler)
 ```
 
 ## Code conventions
@@ -96,6 +99,7 @@ src/
 - **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT` and `buildFullPrompt` from `prompt-generator.ts`. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
 - **Two mascots + none**: `miner` (mascot3d.png), `hat` (mascot-hat.png), or `none` (no mascot) — the LLM picks per prompt.
 - **Secondary characters** — use "cute round-bodied bot buddy" (never "robot" — Qwen confuses it with the mascot). Seed is `-1` (Qwen picks random).
+- **Discord command handler uses dependency injection** — `makeCommandHandler(deps)` is a factory that takes a `CommandDeps` object (credential store, Discord messenger, WordPress client, workflows, image downloader). `server.ts` is the composition root that wires real implementations. Tests inject mocks directly via the factory — no module mocking needed. Interfaces live in `command-deps.ts`.
 
 ## Testing
 
@@ -114,6 +118,7 @@ src/
 - **`--experimental-test-module-mocks`** — required Node flag for `mock.module()`. Already added to `npm test` and `npm run test:coverage` scripts.
 - **`t.mock.method(console, "log", () => {})` — suppress noisy console output in tests that exercise code with `console.log` calls (e.g. image backends).
 - **Temp files** — use `fs.mkdtempSync` in `beforeEach` and `fs.rmSync(dir, { recursive: true })` in `afterEach` for tests that need real files on disk (e.g. `uploadMedia` reads the file with `fs.readFileSync`, Qwen/Nano Banana tests need a valid PNG for `sharp`). Create minimal test PNGs with `sharp({ create: { width: 100, height: 100, ... } }).png().toBuffer()`.
+- **Factory + dependency injection** — `commands.test.ts` uses `makeCommandHandler(mockDeps)` to inject mock implementations directly (no `mock.module` needed). A `makeMockDeps()` helper creates all mocks with call tracking. Fire-and-forget async handlers are tested with a `tick()` helper (`setTimeout(resolve, 10)`) to let the event loop flush.
 - **Fastify `inject()`** — test HTTP routes without starting a real server. For Discord signature verification: generate an Ed25519 keypair at module level, override `(config as any).discordPublicKey` with the test public key, sign payloads with the test private key.
 - **Config validation** — since tests run without `.env`, all `config.*ApiKey` values default to `""`. Tests for missing env var errors just call the workflow with valid model names and assert the error message contains the expected variable name.
 

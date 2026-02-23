@@ -1,15 +1,6 @@
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { config, OUTPUT_DIR } from "../config.ts";
 import type { WPCredentials } from "../credentials.ts";
-import { validateWPCredentials } from "../credentials.ts";
-import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
-import { generateWorkflow } from "../workflows/generate.ts";
-import { improveWorkflow } from "../workflows/improve.ts";
-import { pickWorkflow } from "../workflows/pick.ts";
-import { resolveImagePath } from "../commands/pick.ts";
-import { fetchDraft, resolvePostId } from "../wordpress.ts";
+import type { CommandDeps } from "./command-deps.ts";
 
 // Discord interaction response types
 const DEFERRED_CHANNEL_MESSAGE = 5;
@@ -144,299 +135,7 @@ export const COMMAND_DEFINITIONS = [
   },
 ];
 
-function getOptionValue(interaction: any, name: string): string | undefined {
-  const options = interaction.data?.options || [];
-  const opt = options.find((o: any) => o.name === name);
-  return opt?.value;
-}
-
-function getUserId(interaction: any): string {
-  return interaction.member?.user?.id || interaction.user?.id || "";
-}
-
-function getUserMention(interaction: any): string {
-  const userId = getUserId(interaction);
-  return userId ? `<@${userId}>` : "";
-}
-
-function isInGuild(interaction: any): boolean {
-  return !!interaction.guild_id;
-}
-
-const CLOCK_SPINNER = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"];
-
-async function editOriginalMessage(
-  token: string,
-  content: string,
-  files?: { name: string; path: string }[],
-) {
-  const url = `https://discord.com/api/v10/webhooks/${config.discordApplicationId}/${token}/messages/@original`;
-
-  if (!files || files.length === 0) {
-    await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bot ${config.discordToken}`,
-      },
-      body: JSON.stringify({ content }),
-    });
-    return;
-  }
-
-  // Multipart form data with file attachments
-  const boundary = `----kanario${Date.now()}`;
-  const parts: Buffer[] = [];
-
-  // JSON payload part with attachments metadata
-  const payload = {
-    content,
-    attachments: files.map((f, i) => ({ id: i, filename: f.name })),
-  };
-
-  parts.push(
-    Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payload)}\r\n`,
-    ),
-  );
-
-  // File parts
-  for (const [i, file] of files.entries()) {
-    const fileData = fs.readFileSync(file.path);
-    parts.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="files[${i}]"; filename="${file.name}"\r\nContent-Type: image/png\r\n\r\n`,
-      ),
-    );
-    parts.push(fileData);
-    parts.push(Buffer.from("\r\n"));
-  }
-
-  parts.push(Buffer.from(`--${boundary}--\r\n`));
-
-  const body = Buffer.concat(parts);
-
-  await fetch(url, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": `multipart/form-data; boundary=${boundary}`,
-      Authorization: `Bot ${config.discordToken}`,
-    },
-    body,
-  });
-}
-
-async function handleGenerate(interaction: any) {
-  const token = interaction.token;
-  const userId = getUserId(interaction);
-  const mention = getUserMention(interaction);
-  const rawPostId = getOptionValue(interaction, "post_id") || "";
-  const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
-  const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
-  const hint = getOptionValue(interaction, "hint");
-
-  const creds = loadCredentials(userId);
-  if (!creds) {
-    await editOriginalMessage(
-      token,
-      `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
-    );
-    return;
-  }
-
-  try {
-    const postId = await resolvePostId(creds, rawPostId);
-    let progress = "";
-    let step = 0;
-    const onProgress = (msg: string) => {
-      const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
-      progress += msg + "\n";
-      editOriginalMessage(token, `${mention} ${clock} Generating thumbnails...\n\`\`\`\n${progress}\`\`\``);
-    };
-
-    const result = await generateWorkflow(
-      { creds, postId, model, imageModel, wide: true, hint },
-      onProgress,
-    );
-
-    const promptList = result.prompts
-      .map((p, i) => `**${i + 1}. ${p.scene}** — ${p.scene_description}`)
-      .join("\n");
-
-    const content = `${mention} **${result.postTitle}**\n\n${promptList}\n\nGenerated ${result.imagePaths.length} images:`;
-
-    const files = result.imagePaths.map((p) => ({
-      name: p.split("/").pop()!,
-      path: p,
-    }));
-
-    await editOriginalMessage(token, content, files);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await editOriginalMessage(token, `${mention} Generation failed: ${msg}`);
-  }
-}
-
-async function handlePick(interaction: any) {
-  const token = interaction.token;
-  const userId = getUserId(interaction);
-  const rawPostId = getOptionValue(interaction, "post_id") || "";
-  const imageArg = getOptionValue(interaction, "image") || "";
-
-  const creds = loadCredentials(userId);
-  if (!creds) {
-    const mention = getUserMention(interaction);
-    await editOriginalMessage(
-      token,
-      `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
-    );
-    return;
-  }
-
-  try {
-    const postId = await resolvePostId(creds, rawPostId);
-    const imagePath = resolveImagePath(postId, imageArg);
-    const post = await fetchDraft(creds, postId);
-
-    const result = await pickWorkflow({ creds, postId, imagePath });
-    const mention = getUserMention(interaction);
-
-    await editOriginalMessage(
-      token,
-      `${mention} Featured image set for **${post.title}**\n\nImage: \`${imageArg}\`\nMedia ID: ${result.mediaId}`,
-    );
-  } catch (err) {
-    const mention = getUserMention(interaction);
-    const msg = err instanceof Error ? err.message : String(err);
-    await editOriginalMessage(token, `${mention} Pick failed: ${msg}`);
-  }
-}
-
-async function handleImprove(interaction: any) {
-  const token = interaction.token;
-  const mention = getUserMention(interaction);
-  const rawPostId = getOptionValue(interaction, "post_id") || "";
-  const imageArg = getOptionValue(interaction, "image") || "";
-  const prompt = getOptionValue(interaction, "prompt") || "";
-  const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
-
-  let tempFile: string | undefined;
-
-  try {
-    let sourceImagePath: string;
-
-    if (/^https?:\/\//.test(imageArg)) {
-      // URL — download to temp file
-      const response = await fetch(imageArg);
-      if (!response.ok) {
-        throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
-      }
-      const buffer = Buffer.from(await response.arrayBuffer());
-      tempFile = path.join(os.tmpdir(), `kanario-improve-${Date.now()}.png`);
-      fs.writeFileSync(tempFile, buffer);
-      sourceImagePath = tempFile;
-    } else {
-      // Number shorthand — resolve to local file
-      sourceImagePath = resolveImagePath(rawPostId, imageArg);
-    }
-
-    const outputDir = path.join(OUTPUT_DIR, rawPostId);
-
-    let progress = "";
-    let step = 0;
-    const onProgress = (msg: string) => {
-      const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
-      progress += msg + "\n";
-      editOriginalMessage(token, `${mention} ${clock} Improving image...\n\`\`\`\n${progress}\`\`\``);
-    };
-
-    const result = await improveWorkflow(
-      { sourceImagePath, prompt, imageModel, outputDir },
-      onProgress,
-    );
-
-    const content = `${mention} Improved image with: "${prompt}"\n\nGenerated ${result.imagePaths.length} variants:`;
-
-    const files = result.imagePaths.map((p) => ({
-      name: p.split("/").pop()!,
-      path: p,
-    }));
-
-    await editOriginalMessage(token, content, files);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await editOriginalMessage(token, `${mention} Improve failed: ${msg}`);
-  } finally {
-    if (tempFile) {
-      try { fs.unlinkSync(tempFile); } catch {}
-    }
-  }
-}
-
-async function handleRegisterAsync(interaction: any) {
-  const token = interaction.token;
-  const userId = getUserId(interaction);
-  const wpUrl = (getOptionValue(interaction, "wp_url") || "").replace(/\/+$/, "");
-  const username = getOptionValue(interaction, "username") || "";
-  const appPassword = getOptionValue(interaction, "app_password") || "";
-
-  if (!wpUrl || !username || !appPassword) {
-    await editOriginalMessage(token, "All fields are required: `wp_url`, `username`, `app_password`.");
-    return;
-  }
-
-  const creds: WPCredentials = {
-    wpUrl,
-    wpUsername: username,
-    wpAppPassword: appPassword,
-  };
-
-  const result = await validateWPCredentials(creds);
-  if (!result.valid) {
-    await editOriginalMessage(
-      token,
-      `WordPress authentication failed: ${result.error}\n\nPlease check your URL, username, and app password.`,
-    );
-    return;
-  }
-
-  saveCredentials(userId, creds);
-  await editOriginalMessage(
-    token,
-    `Registered successfully as **${result.displayName}** on \`${wpUrl}\`.`,
-  );
-}
-
-async function handleUnregisterAsync(interaction: any) {
-  const token = interaction.token;
-  const userId = getUserId(interaction);
-  const deleted = deleteCredentials(userId);
-
-  await editOriginalMessage(
-    token,
-    deleted
-      ? "Your WordPress credentials have been removed."
-      : "No credentials found — you weren't registered.",
-  );
-}
-
-async function handleWhoamiAsync(interaction: any) {
-  const token = interaction.token;
-  const userId = getUserId(interaction);
-  const info = getCredentialInfo(userId);
-
-  if (!info) {
-    await editOriginalMessage(token, "You haven't registered yet. Use `/register` in a DM with me.");
-    return;
-  }
-
-  await editOriginalMessage(
-    token,
-    `**WordPress credentials:**\nURL: \`${info.wpUrl}\`\nUsername: \`${info.wpUsername}\`\nRegistered: ${info.registeredAt}`,
-  );
-}
-
-const HELP_TEXT = `**Kanario** — Blog thumbnail generator
+export const HELP_TEXT = `**Kanario** — Blog thumbnail generator
 
 Fetches a WordPress draft, generates scene prompts via AI, and produces cover images.
 
@@ -462,52 +161,281 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 - Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)
 - \`/generate\` and \`/improve\` show live progress updates while images are being generated`;
 
-export function handleInteraction(body: any) {
-  const commandName = body.data?.name;
+function getOptionValue(interaction: any, name: string): string | undefined {
+  const options = interaction.data?.options || [];
+  const opt = options.find((o: any) => o.name === name);
+  return opt?.value;
+}
 
-  // Immediate responses (no async work)
-  if (commandName === "help") {
-    return {
-      type: CHANNEL_MESSAGE,
-      data: { content: HELP_TEXT, flags: EPHEMERAL },
+function getUserId(interaction: any): string {
+  return interaction.member?.user?.id || interaction.user?.id || "";
+}
+
+function getUserMention(interaction: any): string {
+  const userId = getUserId(interaction);
+  return userId ? `<@${userId}>` : "";
+}
+
+function isInGuild(interaction: any): boolean {
+  return !!interaction.guild_id;
+}
+
+const CLOCK_SPINNER = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"];
+
+export function makeCommandHandler(deps: CommandDeps) {
+  const { credentialStore, discord, wordpress, workflows, resolveImagePath, outputDir, downloadImage } = deps;
+
+  async function handleGenerate(interaction: any) {
+    const token = interaction.token;
+    const userId = getUserId(interaction);
+    const mention = getUserMention(interaction);
+    const rawPostId = getOptionValue(interaction, "post_id") || "";
+    const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
+    const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
+    const hint = getOptionValue(interaction, "hint");
+
+    const creds = credentialStore.load(userId);
+    if (!creds) {
+      await discord.editOriginalMessage(
+        token,
+        `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
+      );
+      return;
+    }
+
+    try {
+      const postId = await wordpress.resolvePostId(creds, rawPostId);
+      let progress = "";
+      let step = 0;
+      const onProgress = (msg: string) => {
+        const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
+        progress += msg + "\n";
+        discord.editOriginalMessage(token, `${mention} ${clock} Generating thumbnails...\n\`\`\`\n${progress}\`\`\``);
+      };
+
+      const result = await workflows.generate(
+        { creds, postId, model, imageModel, wide: true, hint },
+        onProgress,
+      );
+
+      const promptList = result.prompts
+        .map((p, i) => `**${i + 1}. ${p.scene}** — ${p.scene_description}`)
+        .join("\n");
+
+      const content = `${mention} **${result.postTitle}**\n\n${promptList}\n\nGenerated ${result.imagePaths.length} images:`;
+
+      const files = result.imagePaths.map((p) => ({
+        name: p.split("/").pop()!,
+        path: p,
+      }));
+
+      await discord.editOriginalMessage(token, content, files);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await discord.editOriginalMessage(token, `${mention} Generation failed: ${msg}`);
+    }
+  }
+
+  async function handlePick(interaction: any) {
+    const token = interaction.token;
+    const userId = getUserId(interaction);
+    const rawPostId = getOptionValue(interaction, "post_id") || "";
+    const imageArg = getOptionValue(interaction, "image") || "";
+
+    const creds = credentialStore.load(userId);
+    if (!creds) {
+      const mention = getUserMention(interaction);
+      await discord.editOriginalMessage(
+        token,
+        `${mention} You need to register your WordPress credentials first. Use \`/register\` in a DM with me.`,
+      );
+      return;
+    }
+
+    try {
+      const postId = await wordpress.resolvePostId(creds, rawPostId);
+      const imagePath = resolveImagePath(postId, imageArg);
+      const post = await wordpress.fetchDraft(creds, postId);
+
+      const result = await workflows.pick({ creds, postId, imagePath });
+      const mention = getUserMention(interaction);
+
+      await discord.editOriginalMessage(
+        token,
+        `${mention} Featured image set for **${post.title}**\n\nImage: \`${imageArg}\`\nMedia ID: ${result.mediaId}`,
+      );
+    } catch (err) {
+      const mention = getUserMention(interaction);
+      const msg = err instanceof Error ? err.message : String(err);
+      await discord.editOriginalMessage(token, `${mention} Pick failed: ${msg}`);
+    }
+  }
+
+  async function handleImprove(interaction: any) {
+    const token = interaction.token;
+    const mention = getUserMention(interaction);
+    const rawPostId = getOptionValue(interaction, "post_id") || "";
+    const imageArg = getOptionValue(interaction, "image") || "";
+    const prompt = getOptionValue(interaction, "prompt") || "";
+    const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
+
+    let downloaded: { path: string; cleanup: () => void } | undefined;
+
+    try {
+      let sourceImagePath: string;
+
+      if (/^https?:\/\//.test(imageArg)) {
+        downloaded = await downloadImage(imageArg);
+        sourceImagePath = downloaded.path;
+      } else {
+        sourceImagePath = resolveImagePath(rawPostId, imageArg);
+      }
+
+      const imgOutputDir = path.join(outputDir, rawPostId);
+
+      let progress = "";
+      let step = 0;
+      const onProgress = (msg: string) => {
+        const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
+        progress += msg + "\n";
+        discord.editOriginalMessage(token, `${mention} ${clock} Improving image...\n\`\`\`\n${progress}\`\`\``);
+      };
+
+      const result = await workflows.improve(
+        { sourceImagePath, prompt, imageModel, outputDir: imgOutputDir },
+        onProgress,
+      );
+
+      const content = `${mention} Improved image with: "${prompt}"\n\nGenerated ${result.imagePaths.length} variants:`;
+
+      const files = result.imagePaths.map((p) => ({
+        name: p.split("/").pop()!,
+        path: p,
+      }));
+
+      await discord.editOriginalMessage(token, content, files);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await discord.editOriginalMessage(token, `${mention} Improve failed: ${msg}`);
+    } finally {
+      if (downloaded) {
+        downloaded.cleanup();
+      }
+    }
+  }
+
+  async function handleRegisterAsync(interaction: any) {
+    const token = interaction.token;
+    const userId = getUserId(interaction);
+    const wpUrl = (getOptionValue(interaction, "wp_url") || "").replace(/\/+$/, "");
+    const username = getOptionValue(interaction, "username") || "";
+    const appPassword = getOptionValue(interaction, "app_password") || "";
+
+    if (!wpUrl || !username || !appPassword) {
+      await discord.editOriginalMessage(token, "All fields are required: `wp_url`, `username`, `app_password`.");
+      return;
+    }
+
+    const creds: WPCredentials = {
+      wpUrl,
+      wpUsername: username,
+      wpAppPassword: appPassword,
     };
+
+    const result = await wordpress.validateCredentials(creds);
+    if (!result.valid) {
+      await discord.editOriginalMessage(
+        token,
+        `WordPress authentication failed: ${result.error}\n\nPlease check your URL, username, and app password.`,
+      );
+      return;
+    }
+
+    credentialStore.save(userId, creds);
+    await discord.editOriginalMessage(
+      token,
+      `Registered successfully as **${result.displayName}** on \`${wpUrl}\`.`,
+    );
   }
 
-  // Reject /register in guild channels immediately (no async work needed)
-  if (commandName === "register" && isInGuild(body)) {
-    return {
-      type: CHANNEL_MESSAGE,
-      data: {
-        content: "For security, please use `/register` in a **DM with me** — your app password would be visible to others in a channel.",
-        flags: EPHEMERAL,
-      },
-    };
+  async function handleUnregisterAsync(interaction: any) {
+    const token = interaction.token;
+    const userId = getUserId(interaction);
+    const deleted = credentialStore.delete(userId);
+
+    await discord.editOriginalMessage(
+      token,
+      deleted
+        ? "Your WordPress credentials have been removed."
+        : "No credentials found — you weren't registered.",
+    );
   }
 
-  // Fire-and-forget: run the handler without awaiting
-  if (commandName === "register") {
-    handleRegisterAsync(body);
-    return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+  async function handleWhoamiAsync(interaction: any) {
+    const token = interaction.token;
+    const userId = getUserId(interaction);
+    const info = credentialStore.getInfo(userId);
+
+    if (!info) {
+      await discord.editOriginalMessage(token, "You haven't registered yet. Use `/register` in a DM with me.");
+      return;
+    }
+
+    await discord.editOriginalMessage(
+      token,
+      `**WordPress credentials:**\nURL: \`${info.wpUrl}\`\nUsername: \`${info.wpUsername}\`\nRegistered: ${info.registeredAt}`,
+    );
   }
 
-  if (commandName === "unregister") {
-    handleUnregisterAsync(body);
-    return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+  function handleInteraction(body: any) {
+    const commandName = body.data?.name;
+
+    // Immediate responses (no async work)
+    if (commandName === "help") {
+      return {
+        type: CHANNEL_MESSAGE,
+        data: { content: HELP_TEXT, flags: EPHEMERAL },
+      };
+    }
+
+    // Reject /register in guild channels immediately (no async work needed)
+    if (commandName === "register" && isInGuild(body)) {
+      return {
+        type: CHANNEL_MESSAGE,
+        data: {
+          content: "For security, please use `/register` in a **DM with me** — your app password would be visible to others in a channel.",
+          flags: EPHEMERAL,
+        },
+      };
+    }
+
+    // Fire-and-forget: run the handler without awaiting
+    if (commandName === "register") {
+      handleRegisterAsync(body);
+      return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+    }
+
+    if (commandName === "unregister") {
+      handleUnregisterAsync(body);
+      return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+    }
+
+    if (commandName === "whoami") {
+      handleWhoamiAsync(body);
+      return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+    }
+
+    if (commandName === "generate") {
+      handleGenerate(body);
+    } else if (commandName === "pick") {
+      handlePick(body);
+    } else if (commandName === "improve") {
+      handleImprove(body);
+    }
+
+    // Return deferred response immediately (under 3s deadline)
+    return { type: DEFERRED_CHANNEL_MESSAGE };
   }
 
-  if (commandName === "whoami") {
-    handleWhoamiAsync(body);
-    return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
-  }
-
-  if (commandName === "generate") {
-    handleGenerate(body);
-  } else if (commandName === "pick") {
-    handlePick(body);
-  } else if (commandName === "improve") {
-    handleImprove(body);
-  }
-
-  // Return deferred response immediately (under 3s deadline)
-  return { type: DEFERRED_CHANNEL_MESSAGE };
+  return { handleInteraction };
 }

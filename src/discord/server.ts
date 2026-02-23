@@ -1,6 +1,16 @@
 import Fastify from "fastify";
-import { config } from "../config.ts";
-import { handleInteraction } from "./commands.ts";
+import { config, OUTPUT_DIR } from "../config.ts";
+import { validateWPCredentials } from "../credentials.ts";
+import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
+import { resolvePostId, fetchDraft } from "../wordpress.ts";
+import { generateWorkflow } from "../workflows/generate.ts";
+import { improveWorkflow } from "../workflows/improve.ts";
+import { pickWorkflow } from "../workflows/pick.ts";
+import { resolveImagePath } from "../commands/pick.ts";
+import { makeCommandHandler } from "./commands.ts";
+import { makeDiscordMessenger } from "./discord-messenger.ts";
+import { makeImageDownloader } from "./image-downloader.ts";
+import type { CommandDeps } from "./command-deps.ts";
 
 export function hexToUint8Array(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
@@ -35,6 +45,31 @@ export async function verifySignature(
 }
 
 export function buildApp() {
+  const deps: CommandDeps = {
+    credentialStore: {
+      load: loadCredentials,
+      save: saveCredentials,
+      delete: deleteCredentials,
+      getInfo: getCredentialInfo,
+    },
+    discord: makeDiscordMessenger(config.discordApplicationId, config.discordToken),
+    wordpress: {
+      resolvePostId,
+      fetchDraft,
+      validateCredentials: validateWPCredentials,
+    },
+    workflows: {
+      generate: generateWorkflow,
+      improve: improveWorkflow,
+      pick: pickWorkflow,
+    },
+    resolveImagePath,
+    outputDir: OUTPUT_DIR,
+    downloadImage: makeImageDownloader(),
+  };
+
+  const { handleInteraction } = makeCommandHandler(deps);
+
   const app = Fastify({ logger: true });
 
   // Custom content type parser to keep raw body as string
