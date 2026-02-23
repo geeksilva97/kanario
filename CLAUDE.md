@@ -26,8 +26,11 @@ npm run server
 # Register Discord slash commands
 npm run discord:register
 
-# Deploy Discord bot to Cloud Run
+# Deploy Discord bot to Cloud Run (manual)
 GCP_PROJECT_ID=edy-ai-playground ./deploy/deploy.sh
+
+# Deploy happens automatically via CI on push to main
+# (all tests must pass first — see CI/CD section below)
 
 # Set secrets on Cloud Run (after first deploy)
 gcloud run services update kanario-discord \
@@ -96,6 +99,7 @@ src/
 - **All Discord commands use deferred responses** — Discord requires a response within 3s. All commands return a deferred message immediately and edit it after async work completes. Credential commands use ephemeral flag. `/register` in a guild channel is the only exception — rejected immediately with a security warning.
 - **Discord command registration is separate from deploy** — `deploy.sh` only deploys the server. When slash command definitions change (add/remove/rename commands or options in `COMMAND_DEFINITIONS`), you must also run `npm run discord:register` to push the changes to Discord's API.
 - **Cloud Scheduler keep-alive** — `deploy.sh` creates a Cloud Scheduler job (`kanario-keep-alive`) that pings `GET /health` every 5 minutes to prevent cold starts (which exceed Discord's 3s deadline). Uses `update || create` pattern for idempotency.
+- **CI/CD pipeline** — GitHub Actions runs unit tests, type check, integration tests, and smoke tests on every push. On `main`, after all jobs pass, the deploy job builds a Docker image on the GH Actions runner, pushes to Artifact Registry, and deploys to Cloud Run. Uses **Workload Identity Federation** (WIF) for keyless GCP auth — no service account keys. The WIF pool (`github`), OIDC provider (`kanario`), and deployer service account (`kanario-deployer`) are scoped to the `geeksilva97/kanario` repo via attribute condition.
 - **Image backends implement `ImageBackend` interface** — `generate()` takes prompt + optional mascotPath + seed + wide, returns a PNG `Buffer`. Optional `maxConcurrency` limits parallel jobs.
 - **Mascot is optional per scene** — the LLM decides independently for each scene whether a mascot fits (`miner`, `hat`) or a scene-only diorama works better (`none`). When `none`, Qwen gets a blank white canvas (required field), Nano Banana gets text-only content.
 - **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.

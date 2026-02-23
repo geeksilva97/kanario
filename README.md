@@ -220,7 +220,7 @@ gcloud artifacts repositories create kanario \
 GCP_PROJECT_ID=edy-ai-playground ./deploy/deploy.sh
 ```
 
-The script builds the Docker image via Cloud Build, pushes it to Artifact Registry, and deploys to Cloud Run. It prints the service URL when done.
+The script builds the Docker image via Cloud Build, pushes it to Artifact Registry, and deploys to Cloud Run. It prints the service URL when done. For automated deploys, push to `main` — the CI pipeline builds and deploys after all tests pass (see [CI/CD](#cicd)).
 
 Optional env vars:
 - `GCP_REGION` — Cloud Run region (default: `southamerica-east1`)
@@ -410,7 +410,7 @@ npm test              # unit tests — colocated *.test.ts files (no network, no
 
 ## CI/CD
 
-GitHub Actions runs on every push and PR to `main`. The pipeline has 4 jobs:
+GitHub Actions runs on every push and PR to `main`. The pipeline has 5 jobs:
 
 | Job | Trigger | What it does |
 |---|---|---|
@@ -418,6 +418,16 @@ GitHub Actions runs on every push and PR to `main`. The pipeline has 4 jobs:
 | **Type Check** | all pushes & PRs | `npx tsc --noEmit` |
 | **Integration Tests** | all pushes & PRs | Hits real WordPress API (needs WP secrets) |
 | **Smoke Tests** | push to `main` only | Generates real images, uploads output as artifact for visual inspection |
+| **Deploy to Cloud Run** | push to `main` only | Builds Docker image, pushes to Artifact Registry, deploys to Cloud Run (runs after all other jobs pass) |
+
+### GCP authentication
+
+The deploy job uses **Workload Identity Federation** (WIF) for keyless authentication — no service account keys to manage or rotate. GitHub Actions exchanges a short-lived OIDC token for temporary GCP credentials.
+
+The WIF setup:
+- **Workload Identity Pool**: `github` (global)
+- **OIDC Provider**: `kanario` (scoped to `geeksilva97/kanario` via attribute condition)
+- **Service Account**: `kanario-deployer@edy-ai-playground.iam.gserviceaccount.com`
 
 ### Required GitHub Secrets
 
@@ -428,6 +438,9 @@ GitHub Actions runs on every push and PR to `main`. The pipeline has 4 jobs:
 | `WP_APP_PASSWORD` | Integration Tests, Smoke Tests |
 | `GEMINI_API_KEY` | Smoke Tests |
 | `RUNPOD_API_KEY` | Smoke Tests |
+| `GCP_PROJECT_ID` | Deploy |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Deploy (WIF provider path) |
+| `GCP_SERVICE_ACCOUNT` | Deploy (deployer service account email) |
 
 Set these in **Settings → Secrets and variables → Actions** in the GitHub repository.
 
