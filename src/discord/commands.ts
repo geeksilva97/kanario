@@ -10,12 +10,17 @@ const CHANNEL_MESSAGE = 4;
 // Ephemeral flag — only visible to the invoking user
 const EPHEMERAL = 64;
 
-interface DiscordOption {
+export interface DiscordOption {
   name: string;
   value: string;
 }
 
-interface DiscordInteraction {
+export interface InteractionResponse {
+  type: number;
+  data?: { content?: string; flags?: number };
+}
+
+export interface DiscordInteraction {
   token: string;
   guild_id?: string;
   data?: { name: string; options?: DiscordOption[] };
@@ -402,7 +407,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     );
   }
 
-  function handleInteraction(body: DiscordInteraction) {
+  function handleInteraction(body: DiscordInteraction): InteractionResponse {
     const commandName = body.data?.name;
 
     // Immediate responses (no async work)

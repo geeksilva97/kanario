@@ -12,9 +12,10 @@ const fakeHttp: HttpClient = {
 describe("generateWorkflow", () => {
   it("throws ConfigError on invalid model", async () => {
     await assert.rejects(
-      () => generateWorkflow({ wpHttp: fakeHttp, postId: "123", model: "gpt4" as any, wide: true }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      // @ts-expect-error — intentionally passing invalid model to test error handling
+      () => generateWorkflow({ wpHttp: fakeHttp, postId: "123", model: "gpt4", wide: true }),
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "unknown_model");
         assert.match(err.message, /Unknown model "gpt4"/);
         return true;
@@ -25,8 +26,8 @@ describe("generateWorkflow", () => {
   it("throws ConfigError when RUNPOD_API_KEY is missing for qwen", async () => {
     await assert.rejects(
       () => generateWorkflow({ wpHttp: fakeHttp, postId: "123", model: "gemini", imageModel: "qwen", wide: true }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "missing_env_vars");
         assert.match(err.message, /RUNPOD_API_KEY/);
         return true;
@@ -37,8 +38,8 @@ describe("generateWorkflow", () => {
   it("throws ConfigError when GEMINI_API_KEY is missing for gemini model", async () => {
     await assert.rejects(
       () => generateWorkflow({ wpHttp: fakeHttp, postId: "123", model: "gemini", imageModel: "qwen", wide: true }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "missing_env_vars");
         assert.match(err.message, /GEMINI_API_KEY/);
         return true;
@@ -49,8 +50,8 @@ describe("generateWorkflow", () => {
   it("throws ConfigError when ANTHROPIC_API_KEY is missing for claude model", async () => {
     await assert.rejects(
       () => generateWorkflow({ wpHttp: fakeHttp, postId: "123", model: "claude", imageModel: "qwen", wide: true }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "missing_env_vars");
         assert.match(err.message, /ANTHROPIC_API_KEY/);
         return true;
@@ -61,8 +62,8 @@ describe("generateWorkflow", () => {
   it("throws ConfigError when GEMINI_API_KEY is missing for nano-banana", async () => {
     await assert.rejects(
       () => generateWorkflow({ wpHttp: fakeHttp, postId: "123", model: "claude", imageModel: "nano-banana", wide: true }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "missing_env_vars");
         assert.match(err.message, /GEMINI_API_KEY/);
         return true;

@@ -62,8 +62,8 @@ describe("improveWorkflow", () => {
         prompt: "make it better",
         outputDir: "/tmp",
       }),
-      (err: any) => {
-        assert.ok(FileError.is(err));
+      (err: unknown) => {
+        if (!FileError.is(err)) return assert.fail("Expected FileError");
         assert.equal(err.type, "image_not_found");
         assert.match(err.message, /Image not found: \/nonexistent\/image\.png/);
         return true;
@@ -79,8 +79,8 @@ describe("improveWorkflow", () => {
         imageModel: "qwen",
         outputDir: tmpDir,
       }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "missing_env_vars");
         assert.match(err.message, /RUNPOD_API_KEY/);
         return true;
@@ -96,8 +96,8 @@ describe("improveWorkflow", () => {
         imageModel: "nano-banana",
         outputDir: tmpDir,
       }),
-      (err: any) => {
-        assert.ok(ConfigError.is(err));
+      (err: unknown) => {
+        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
         assert.equal(err.type, "missing_env_vars");
         assert.match(err.message, /GEMINI_API_KEY/);
         return true;

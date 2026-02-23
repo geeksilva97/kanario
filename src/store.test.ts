@@ -61,7 +61,7 @@ describe("credential store", () => {
     assert.equal(info.wpUrl, fakeCreds.wpUrl);
     assert.equal(info.wpUsername, fakeCreds.wpUsername);
     assert.ok(info.registeredAt);
-    assert.equal((info as any).wpAppPassword, undefined);
+    assert.ok(!("wpAppPassword" in info));
   });
 
   it("getCredentialInfo returns null for unknown user", () => {
@@ -88,11 +88,12 @@ describe("credential store (encryption)", () => {
     saveCredentials("user123", fakeCreds);
 
     const rawDb = new DatabaseSync(dbPath);
-    const row = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user123'").get() as any;
+    const row = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user123'").get();
     rawDb.close();
 
+    assert.ok(row && typeof row === "object" && "wp_app_password" in row);
     assert.notEqual(row.wp_app_password, fakeCreds.wpAppPassword);
-    assert.ok(row.wp_app_password.includes(":"), "encrypted format should be iv:tag:data");
+    assert.ok(String(row.wp_app_password).includes(":"), "encrypted format should be iv:tag:data");
 
     const loaded = loadCredentials("user123");
     assert.equal(loaded?.wpAppPassword, fakeCreds.wpAppPassword);
@@ -103,10 +104,12 @@ describe("credential store (encryption)", () => {
     saveCredentials("user-b", fakeCreds);
 
     const rawDb = new DatabaseSync(dbPath);
-    const rowA = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user-a'").get() as any;
-    const rowB = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user-b'").get() as any;
+    const rowA = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user-a'").get();
+    const rowB = rawDb.prepare("SELECT wp_app_password FROM credentials WHERE discord_user_id = 'user-b'").get();
     rawDb.close();
 
+    assert.ok(rowA && typeof rowA === "object" && "wp_app_password" in rowA);
+    assert.ok(rowB && typeof rowB === "object" && "wp_app_password" in rowB);
     assert.notEqual(rowA.wp_app_password, rowB.wp_app_password);
   });
 });

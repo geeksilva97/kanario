@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { buildFullPrompt } from "./prompt-generator.ts";
 
 // File-level mock: swap implementation per test via shared variable
-let generateContentImpl: Function;
+let generateContentImpl: (opts: Record<string, unknown>) => Promise<unknown>;
 
 // @ts-expect-error — mock.module requires --experimental-test-module-mocks
 mock.module("@google/genai", {
   namedExports: {
     GoogleGenAI: class {
-      models = { generateContent: (...args: any[]) => generateContentImpl(...args) };
+      models = { generateContent: (opts: Record<string, unknown>) => generateContentImpl(opts) };
     },
     Type: { OBJECT: "OBJECT", ARRAY: "ARRAY", STRING: "STRING" },
   },
@@ -57,7 +57,7 @@ describe("Gemini generatePrompts", () => {
   });
 
   it("includes hint in user message when provided", async (t) => {
-    const spy = t.mock.fn(async () => ({
+    const spy = t.mock.fn(async (_opts: Record<string, unknown>) => ({
       text: JSON.stringify({
         prompts: [{
           scene: "mining scene",
@@ -74,13 +74,13 @@ describe("Gemini generatePrompts", () => {
       "use a space theme",
     );
 
-    const call = (spy.mock.calls[0] as any).arguments[0];
-    const userMessage = call.contents as string;
+    const call = spy.mock.calls[0].arguments[0];
+    const userMessage = String(call.contents);
     assert.ok(userMessage.includes("use a space theme"), "hint should appear in user message");
   });
 
   it("uses summary instead of content when available", async (t) => {
-    const spy = t.mock.fn(async () => ({
+    const spy = t.mock.fn(async (_opts: Record<string, unknown>) => ({
       text: JSON.stringify({
         prompts: [{
           scene: "summary scene",
@@ -99,8 +99,8 @@ describe("Gemini generatePrompts", () => {
       summary: "concise summary of the post",
     });
 
-    const call = (spy.mock.calls[0] as any).arguments[0];
-    const userMessage = call.contents as string;
+    const call = spy.mock.calls[0].arguments[0];
+    const userMessage = String(call.contents);
     assert.ok(userMessage.includes("concise summary of the post"));
     assert.ok(!userMessage.includes("very long content"));
   });

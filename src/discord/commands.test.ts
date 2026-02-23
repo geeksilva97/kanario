@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { makeCommandHandler, COMMAND_DEFINITIONS, HELP_TEXT } from "./commands.ts";
+import type { DiscordInteraction } from "./commands.ts";
 import type { CommandDeps } from "./command-deps.ts";
 import type { HttpClient } from "../http.ts";
 
@@ -9,12 +10,12 @@ const fakeHttp: HttpClient = {
   request: async () => new Response("{}"),
 };
 
-function makeMockDeps(): CommandDeps & { _calls: Record<string, any[][]> } {
-  const calls: Record<string, any[][]> = {};
+function makeMockDeps(): CommandDeps & { _calls: Record<string, unknown[][]> } {
+  const calls: Record<string, unknown[][]> = {};
 
-  function track(name: string, impl: (...args: any[]) => any) {
+  function track<A extends unknown[], R>(name: string, impl: (...args: A) => R): (...args: A) => R {
     calls[name] = [];
-    return (...args: any[]) => {
+    return (...args: A) => {
       calls[name].push(args);
       return impl(...args);
     };
@@ -56,9 +57,8 @@ function makeMockDeps(): CommandDeps & { _calls: Record<string, any[][]> } {
   };
 }
 
-function makeInteraction(command: string, options: Record<string, string> = {}, overrides: Record<string, any> = {}) {
+function makeInteraction(command: string, options: Record<string, string> = {}, overrides: Partial<DiscordInteraction> = {}): DiscordInteraction {
   return {
-    type: 2,
     token: "test-token",
     member: { user: { id: "user-123" } },
     data: {
@@ -72,6 +72,25 @@ function makeInteraction(command: string, options: Record<string, string> = {}, 
 // Helper to wait for fire-and-forget async handlers to settle
 function tick() {
   return new Promise((resolve) => setTimeout(resolve, 10));
+}
+
+// Extract message string from the Nth editOriginalMessage call (default: first)
+function editMsg(deps: { _calls: Record<string, unknown[][]> }, index = 0): string {
+  return String(deps._calls["discord.editOriginalMessage"][index][1]);
+}
+
+// Extract message string from the last editOriginalMessage call
+function lastEditMsg(deps: { _calls: Record<string, unknown[][]> }): string {
+  const calls = deps._calls["discord.editOriginalMessage"];
+  return String(calls[calls.length - 1][1]);
+}
+
+// Return a credentialStore.load override that tracks calls and returns credentials
+function loadWithCreds(deps: { _calls: Record<string, unknown[][]> }) {
+  return (userId: string) => {
+    deps._calls["credentialStore.load"].push([userId]);
+    return { wpUrl: "https://blog.example.com", wpUsername: "user", wpAppPassword: "pass" };
+  };
 }
 
 describe("COMMAND_DEFINITIONS", () => {
@@ -95,9 +114,10 @@ describe("/help", () => {
     const deps = makeMockDeps();
     const { handleInteraction } = makeCommandHandler(deps);
 
-    const result = handleInteraction(makeInteraction("help")) as any;
+    const result = handleInteraction(makeInteraction("help"));
 
     assert.equal(result.type, 4); // CHANNEL_MESSAGE
+    assert.ok(result.data);
     assert.equal(result.data.content, HELP_TEXT);
     assert.equal(result.data.flags, 64); // EPHEMERAL
   });
@@ -114,10 +134,11 @@ describe("/register", () => {
       { guild_id: "guild-1" },
     );
 
-    const result = handleInteraction(interaction) as any;
+    const result = handleInteraction(interaction);
 
     assert.equal(result.type, 4); // CHANNEL_MESSAGE
-    assert.ok(result.data.content.includes("DM with me"));
+    assert.ok(result.data);
+    assert.ok(result.data.content?.includes("DM with me"));
     assert.equal(result.data.flags, 64); // EPHEMERAL
   });
 
@@ -131,22 +152,25 @@ describe("/register", () => {
       app_password: "xxxx",
     });
 
-    const result = handleInteraction(interaction) as any;
+    const result = handleInteraction(interaction);
     assert.equal(result.type, 5); // DEFERRED_CHANNEL_MESSAGE
+    assert.ok(result.data);
     assert.equal(result.data.flags, 64); // EPHEMERAL
 
     await tick();
 
     assert.equal(deps._calls["wordpress.validateCredentials"].length, 1);
-    const [creds] = deps._calls["wordpress.validateCredentials"][0];
-    assert.equal(creds.wpUrl, "https://blog.example.com"); // trailing slash stripped
-    assert.equal(creds.wpUsername, "testuser");
+    assert.deepEqual(deps._calls["wordpress.validateCredentials"][0][0], {
+      wpUrl: "https://blog.example.com", // trailing slash stripped
+      wpUsername: "testuser",
+      wpAppPassword: "xxxx",
+    });
 
     assert.equal(deps._calls["credentialStore.save"].length, 1);
     assert.equal(deps._calls["credentialStore.save"][0][0], "user-123");
 
     assert.equal(deps._calls["discord.editOriginalMessage"].length, 1);
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("Registered successfully"));
     assert.ok(msg.includes("testuser"));
   });
@@ -165,7 +189,7 @@ describe("/register", () => {
     handleInteraction(interaction);
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("WordPress authentication failed"));
     assert.ok(msg.includes("401 Unauthorized"));
   });
@@ -179,7 +203,7 @@ describe("/register", () => {
     handleInteraction(interaction);
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("All fields are required"));
   });
 });
@@ -197,14 +221,14 @@ describe("/unregister", () => {
     assert.equal(deps._calls["credentialStore.delete"].length, 1);
     assert.equal(deps._calls["credentialStore.delete"][0][0], "user-123");
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("credentials have been removed"));
   });
 
   it("reports when no credentials found", async () => {
     const deps = makeMockDeps();
-    deps.credentialStore.delete = (...args: any[]) => {
-      deps._calls["credentialStore.delete"].push(args);
+    deps.credentialStore.delete = (userId: string) => {
+      deps._calls["credentialStore.delete"].push([userId]);
       return false;
     };
     const { handleInteraction } = makeCommandHandler(deps);
@@ -212,7 +236,7 @@ describe("/unregister", () => {
     handleInteraction(makeInteraction("unregister"));
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("No credentials found"));
   });
 });
@@ -220,8 +244,8 @@ describe("/unregister", () => {
 describe("/whoami", () => {
   it("shows credentials when registered", async () => {
     const deps = makeMockDeps();
-    deps.credentialStore.getInfo = (...args: any[]) => {
-      deps._calls["credentialStore.getInfo"].push(args);
+    deps.credentialStore.getInfo = (userId: string) => {
+      deps._calls["credentialStore.getInfo"].push([userId]);
       return { wpUrl: "https://blog.example.com", wpUsername: "testuser", registeredAt: "2025-01-01T00:00:00Z" };
     };
     const { handleInteraction } = makeCommandHandler(deps);
@@ -231,7 +255,7 @@ describe("/whoami", () => {
 
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("blog.example.com"));
     assert.ok(msg.includes("testuser"));
     assert.ok(msg.includes("2025-01-01"));
@@ -244,7 +268,7 @@ describe("/whoami", () => {
     handleInteraction(makeInteraction("whoami"));
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("haven't registered"));
   });
 });
@@ -260,16 +284,13 @@ describe("/generate", () => {
 
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("register your WordPress credentials"));
   });
 
   it("generates thumbnails on happy path", async () => {
     const deps = makeMockDeps();
-    deps.credentialStore.load = (...args: any[]) => {
-      deps._calls["credentialStore.load"].push(args);
-      return { wpUrl: "https://blog.example.com", wpUsername: "user", wpAppPassword: "pass" };
-    };
+    deps.credentialStore.load = loadWithCreds(deps);
     const { handleInteraction } = makeCommandHandler(deps);
 
     const interaction = makeInteraction("generate", { post_id: "456", model: "gemini", image_model: "qwen" });
@@ -280,28 +301,23 @@ describe("/generate", () => {
     assert.equal(deps._calls["wordpress.resolvePostId"].length, 1);
     assert.equal(deps._calls["workflows.generate"].length, 1);
 
-    const editCalls = deps._calls["discord.editOriginalMessage"];
-    const lastCall = editCalls[editCalls.length - 1];
-    assert.ok(lastCall[1].includes("Test Post"));
-    assert.ok(lastCall[1].includes("Generated 1 images"));
+    const msg = lastEditMsg(deps);
+    assert.ok(msg.includes("Test Post"));
+    assert.ok(msg.includes("Generated 1 images"));
   });
 
   it("reports generation failure", async () => {
     const deps = makeMockDeps();
-    deps.credentialStore.load = (...args: any[]) => {
-      deps._calls["credentialStore.load"].push(args);
-      return { wpUrl: "https://blog.example.com", wpUsername: "user", wpAppPassword: "pass" };
-    };
+    deps.credentialStore.load = loadWithCreds(deps);
     deps.workflows.generate = async () => { throw new Error("RunPod timeout"); };
     const { handleInteraction } = makeCommandHandler(deps);
 
     handleInteraction(makeInteraction("generate", { post_id: "456" }));
     await tick();
 
-    const editCalls = deps._calls["discord.editOriginalMessage"];
-    const lastCall = editCalls[editCalls.length - 1];
-    assert.ok(lastCall[1].includes("Generation failed"));
-    assert.ok(lastCall[1].includes("RunPod timeout"));
+    const msg = lastEditMsg(deps);
+    assert.ok(msg.includes("Generation failed"));
+    assert.ok(msg.includes("RunPod timeout"));
   });
 });
 
@@ -313,16 +329,13 @@ describe("/pick", () => {
     handleInteraction(makeInteraction("pick", { post_id: "123", image: "2" }));
     await tick();
 
-    const [, msg] = deps._calls["discord.editOriginalMessage"][0];
+    const msg = editMsg(deps);
     assert.ok(msg.includes("register your WordPress credentials"));
   });
 
   it("picks image on happy path", async () => {
     const deps = makeMockDeps();
-    deps.credentialStore.load = (...args: any[]) => {
-      deps._calls["credentialStore.load"].push(args);
-      return { wpUrl: "https://blog.example.com", wpUsername: "user", wpAppPassword: "pass" };
-    };
+    deps.credentialStore.load = loadWithCreds(deps);
     const { handleInteraction } = makeCommandHandler(deps);
 
     handleInteraction(makeInteraction("pick", { post_id: "456", image: "2" }));
@@ -334,28 +347,23 @@ describe("/pick", () => {
     assert.equal(deps._calls["workflows.pick"].length, 1);
     assert.equal(deps._calls["resolveImagePath"].length, 1);
 
-    const editCalls = deps._calls["discord.editOriginalMessage"];
-    const lastCall = editCalls[editCalls.length - 1];
-    assert.ok(lastCall[1].includes("Featured image set"));
-    assert.ok(lastCall[1].includes("Media ID: 42"));
+    const msg = lastEditMsg(deps);
+    assert.ok(msg.includes("Featured image set"));
+    assert.ok(msg.includes("Media ID: 42"));
   });
 
   it("reports pick failure", async () => {
     const deps = makeMockDeps();
-    deps.credentialStore.load = (...args: any[]) => {
-      deps._calls["credentialStore.load"].push(args);
-      return { wpUrl: "https://blog.example.com", wpUsername: "user", wpAppPassword: "pass" };
-    };
+    deps.credentialStore.load = loadWithCreds(deps);
     deps.workflows.pick = async () => { throw new Error("Upload failed"); };
     const { handleInteraction } = makeCommandHandler(deps);
 
     handleInteraction(makeInteraction("pick", { post_id: "456", image: "2" }));
     await tick();
 
-    const editCalls = deps._calls["discord.editOriginalMessage"];
-    const lastCall = editCalls[editCalls.length - 1];
-    assert.ok(lastCall[1].includes("Pick failed"));
-    assert.ok(lastCall[1].includes("Upload failed"));
+    const msg = lastEditMsg(deps);
+    assert.ok(msg.includes("Pick failed"));
+    assert.ok(msg.includes("Upload failed"));
   });
 });
 
@@ -372,10 +380,9 @@ describe("/improve", () => {
     assert.equal(deps._calls["resolveImagePath"][0][1], "2");
     assert.equal(deps._calls["workflows.improve"].length, 1);
 
-    const editCalls = deps._calls["discord.editOriginalMessage"];
-    const lastCall = editCalls[editCalls.length - 1];
-    assert.ok(lastCall[1].includes("Improved image"));
-    assert.ok(lastCall[1].includes("make it darker"));
+    const msg = lastEditMsg(deps);
+    assert.ok(msg.includes("Improved image"));
+    assert.ok(msg.includes("make it darker"));
   });
 
   it("downloads image from URL", async () => {
@@ -422,10 +429,9 @@ describe("/improve", () => {
     handleInteraction(makeInteraction("improve", { post_id: "456", image: "2", prompt: "fix" }));
     await tick();
 
-    const editCalls = deps._calls["discord.editOriginalMessage"];
-    const lastCall = editCalls[editCalls.length - 1];
-    assert.ok(lastCall[1].includes("Improve failed"));
-    assert.ok(lastCall[1].includes("Backend error"));
+    const msg = lastEditMsg(deps);
+    assert.ok(msg.includes("Improve failed"));
+    assert.ok(msg.includes("Backend error"));
   });
 
   it("calls cleanup even on failure when URL was downloaded", async () => {

@@ -4,10 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { stripHtml, parsePostId, resolvePostId, fetchDraft, uploadMedia, setFeaturedImage } from "./wordpress.ts";
-import type { HttpClient } from "./http.ts";
+import type { HttpClient, HttpRequestInit } from "./http.ts";
 import { HttpError, WordPressError } from "./errors.ts";
 
-function mockHttpClient(impl: (path: string, init?: RequestInit) => Promise<Response>): HttpClient {
+function mockHttpClient(impl: (path: string, init?: HttpRequestInit) => Promise<Response>): HttpClient {
   return {
     baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
     request: impl,
@@ -106,8 +106,8 @@ describe("resolvePostId", () => {
 
     await assert.rejects(
       () => resolvePostId(http, "https://blog.codeminer42.com/nonexistent-post/"),
-      (err: any) => {
-        assert.ok(WordPressError.is(err));
+      (err: unknown) => {
+        if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_slug_not_found");
         assert.match(err.message, /No post found with slug "nonexistent-post"/);
         assert.deepEqual(err.meta, { slug: "nonexistent-post" });
@@ -146,8 +146,8 @@ describe("resolvePostId", () => {
 
     await assert.rejects(
       () => resolvePostId(http, "just-a-slug"),
-      (err: any) => {
-        assert.ok(WordPressError.is(err));
+      (err: unknown) => {
+        if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_unresolvable_input");
         assert.match(err.message, /Cannot resolve post from input: just-a-slug/);
         assert.deepEqual(err.meta, { input: "just-a-slug" });
@@ -184,8 +184,8 @@ describe("fetchDraft", () => {
 
     await assert.rejects(
       () => fetchDraft(http, "999"),
-      (err: any) => {
-        assert.ok(WordPressError.is(err));
+      (err: unknown) => {
+        if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_fetch_failed");
         assert.equal(err.meta.status, 404);
         assert.equal(err.meta.postId, "999");
@@ -212,7 +212,7 @@ describe("uploadMedia", () => {
 
   it("uploads file and returns media ID", async () => {
     let calledPath = "";
-    let calledInit: RequestInit | undefined;
+    let calledInit: HttpRequestInit | undefined;
     const http = mockHttpClient(async (p, init) => {
       calledPath = p;
       calledInit = init;
@@ -223,7 +223,8 @@ describe("uploadMedia", () => {
     assert.equal(result, 42);
     assert.equal(calledPath, "/media");
     assert.equal(calledInit?.method, "POST");
-    const headers = calledInit?.headers as Record<string, string>;
+    const headers = calledInit?.headers;
+    assert.ok(headers, "expected headers");
     assert.equal(headers["Content-Type"], "image/png");
     assert.equal(headers["Content-Disposition"], 'attachment; filename="cover.png"');
   });
@@ -236,8 +237,8 @@ describe("uploadMedia", () => {
 
     await assert.rejects(
       () => uploadMedia(http, tmpImage, "cover.png"),
-      (err: any) => {
-        assert.ok(WordPressError.is(err));
+      (err: unknown) => {
+        if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_upload_failed");
         assert.equal(err.meta.status, 403);
         assert.equal(err.meta.wpCode, "rest_cannot_create");
@@ -250,7 +251,7 @@ describe("uploadMedia", () => {
 describe("setFeaturedImage", () => {
   it("sends POST with featured_media in body", async () => {
     let calledPath = "";
-    let calledInit: RequestInit | undefined;
+    let calledInit: HttpRequestInit | undefined;
     const http = mockHttpClient(async (p, init) => {
       calledPath = p;
       calledInit = init;
@@ -260,9 +261,10 @@ describe("setFeaturedImage", () => {
     await setFeaturedImage(http, "123", 42);
     assert.equal(calledPath, "/posts/123");
     assert.equal(calledInit?.method, "POST");
-    const headers = calledInit?.headers as Record<string, string>;
+    const headers = calledInit?.headers;
+    assert.ok(headers, "expected headers");
     assert.equal(headers["Content-Type"], "application/json");
-    assert.deepEqual(JSON.parse(calledInit?.body as string), { featured_media: 42 });
+    assert.deepEqual(JSON.parse(String(calledInit?.body)), { featured_media: 42 });
   });
 
   it("throws WordPressError on non-200 response with wpCode", async () => {
@@ -273,8 +275,8 @@ describe("setFeaturedImage", () => {
 
     await assert.rejects(
       () => setFeaturedImage(http, "123", 42),
-      (err: any) => {
-        assert.ok(WordPressError.is(err));
+      (err: unknown) => {
+        if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_set_featured_failed");
         assert.equal(err.meta.status, 403);
         assert.equal(err.meta.wpCode, "rest_cannot_edit");

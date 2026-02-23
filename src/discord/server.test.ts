@@ -7,7 +7,8 @@ import { config } from "../config.ts";
 const testKeyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
 const testRawPub = await crypto.subtle.exportKey("raw", testKeyPair.publicKey);
 const testPubHex = Buffer.from(testRawPub).toString("hex");
-(config as any).discordPublicKey = testPubHex;
+// Override readonly config for test — Object.defineProperty bypasses TS readonly at runtime
+Object.defineProperty(config, "discordPublicKey", { value: testPubHex });
 
 async function signPayload(body: string, timestamp: string): Promise<string> {
   const message = new TextEncoder().encode(timestamp + body);

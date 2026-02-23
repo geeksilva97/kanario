@@ -6,13 +6,19 @@ import os from "node:os";
 import sharp from "sharp";
 
 // File-level mock: swap implementation per test via shared variable
-let generateContentImpl: Function;
+// Shape matches the subset of @google/genai's generateContent used by the backend
+interface MockGenContentOpts {
+  model: string;
+  contents: Array<{ parts: Array<Record<string, unknown>> }>;
+  config?: unknown;
+}
+let generateContentImpl: (opts: MockGenContentOpts) => Promise<unknown>;
 
 // @ts-expect-error — mock.module requires --experimental-test-module-mocks
 mock.module("@google/genai", {
   namedExports: {
     GoogleGenAI: class {
-      models = { generateContent: (...args: any[]) => generateContentImpl(...args) };
+      models = { generateContent: (opts: MockGenContentOpts) => generateContentImpl(opts) };
     },
   },
 });
@@ -40,7 +46,7 @@ describe("NanoBananaBackend", () => {
   it("generates image with mascot (happy path)", async (t) => {
     t.mock.method(console, "log", () => {});
     const fakeImageBase64 = Buffer.from("fake-png-image").toString("base64");
-    const spy = t.mock.fn(async () => ({
+    const spy = t.mock.fn(async (_opts: MockGenContentOpts) => ({
       candidates: [{
         content: {
           parts: [{ inlineData: { data: fakeImageBase64, mimeType: "image/png" } }],
@@ -63,7 +69,7 @@ describe("NanoBananaBackend", () => {
     assert.equal(spy.mock.callCount(), 1);
 
     // Validate the request includes mascot and prompt
-    const call = (spy.mock.calls[0] as any).arguments[0];
+    const call = spy.mock.calls[0].arguments[0];
     assert.equal(call.model, "gemini-2.5-flash-image");
     const parts = call.contents[0].parts;
     assert.equal(parts.length, 2);
@@ -74,7 +80,7 @@ describe("NanoBananaBackend", () => {
   it("generates image without mascot (text-only)", async (t) => {
     t.mock.method(console, "log", () => {});
     const fakeImageBase64 = Buffer.from("no-mascot-image").toString("base64");
-    const spy = t.mock.fn(async () => ({
+    const spy = t.mock.fn(async (_opts: MockGenContentOpts) => ({
       candidates: [{
         content: {
           parts: [{ inlineData: { data: fakeImageBase64, mimeType: "image/png" } }],
@@ -94,7 +100,7 @@ describe("NanoBananaBackend", () => {
     assert.ok(Buffer.isBuffer(result));
     assert.equal(spy.mock.callCount(), 1);
 
-    const call = (spy.mock.calls[0] as any).arguments[0];
+    const call = spy.mock.calls[0].arguments[0];
     const parts = call.contents[0].parts;
     assert.equal(parts.length, 1);
     assert.equal(parts[0].text, "scene only prompt");
@@ -114,8 +120,8 @@ describe("NanoBananaBackend", () => {
     const backend = createNanoBananaBackend();
     await assert.rejects(
       () => backend.generate({ prompt: "fail", seed: -1, wide: false }),
-      (err: any) => {
-        assert.ok(ImageBackendError.is(err));
+      (err: unknown) => {
+        if (!ImageBackendError.is(err)) return assert.fail("Expected ImageBackendError");
         assert.equal(err.type, "no_image_data");
         assert.match(err.message, /Nano Banana returned no image data/);
         return true;

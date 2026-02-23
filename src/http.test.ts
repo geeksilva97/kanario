@@ -40,10 +40,13 @@ describe("createHttpClient", () => {
       headers: { "Content-Type": "text/plain", "X-Custom": "value" },
     });
 
-    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
-    assert.equal(calledInit.headers.Authorization, "Bearer token");
-    assert.equal(calledInit.headers["Content-Type"], "text/plain");
-    assert.equal(calledInit.headers["X-Custom"], "value");
+    const calledInit = mockFetch.mock.calls[0].arguments[1];
+    assert.ok(calledInit !== undefined && typeof calledInit === "object" && "headers" in calledInit);
+    // HeadersInit is a union (Record | string[][] | Headers) — createHttpClient always produces a plain object
+    const headers = calledInit.headers as Record<string, string>;
+    assert.equal(headers.Authorization, "Bearer token");
+    assert.equal(headers["Content-Type"], "text/plain");
+    assert.equal(headers["X-Custom"], "value");
   });
 
   it("throws HttpError on non-ok response", async (t) => {
@@ -55,8 +58,8 @@ describe("createHttpClient", () => {
 
     await assert.rejects(
       () => http.request("/posts/999"),
-      (err: any) => {
-        assert.ok(HttpError.is(err));
+      (err: unknown) => {
+        if (!HttpError.is(err)) return assert.fail("Expected HttpError");
         assert.equal(err.meta.status, 404);
         assert.equal(err.meta.statusText, "Not Found");
         assert.equal(err.meta.body, "Not Found");
@@ -76,8 +79,8 @@ describe("createHttpClient", () => {
 
     await assert.rejects(
       () => http.request("https://api.example.com/data", { method: "POST" }),
-      (err: any) => {
-        assert.ok(HttpError.is(err));
+      (err: unknown) => {
+        if (!HttpError.is(err)) return assert.fail("Expected HttpError");
         assert.equal(err.meta.method, "POST");
         return true;
       },

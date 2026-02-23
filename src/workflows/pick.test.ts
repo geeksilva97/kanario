@@ -25,8 +25,8 @@ describe("pickWorkflow", () => {
   it("throws FileError when file does not exist", async () => {
     await assert.rejects(
       () => pickWorkflow({ wpHttp: fakeHttp, postId: "123", imagePath: "/nonexistent/image.png" }),
-      (err: any) => {
-        assert.ok(FileError.is(err));
+      (err: unknown) => {
+        if (!FileError.is(err)) return assert.fail("Expected FileError");
         assert.equal(err.type, "image_not_found");
         assert.match(err.message, /Image not found: \/nonexistent\/image\.png/);
         return true;
@@ -78,8 +78,8 @@ describe("pickWorkflow", () => {
 
     await assert.rejects(
       () => pickWorkflow({ wpHttp: http, postId: "123", imagePath: tmpImage }),
-      (err: any) => {
-        assert.ok(WordPressError.is(err));
+      (err: unknown) => {
+        if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_upload_failed");
         assert.equal(err.meta.status, 403);
         assert.equal(err.meta.wpCode, "rest_cannot_create");

@@ -39,9 +39,10 @@ describe("ImageBackend", () => {
 
   it("createImageBackend throws ImageBackendError on invalid model", () => {
     assert.throws(
-      () => createImageBackend("invalid" as any),
-      (err: any) => {
-        assert.ok(ImageBackendError.is(err));
+      // @ts-expect-error — intentionally passing invalid model to test error handling
+      () => createImageBackend("invalid"),
+      (err: unknown) => {
+        if (!ImageBackendError.is(err)) return assert.fail("Expected ImageBackendError");
         assert.equal(err.type, "unknown_image_model");
         assert.match(err.message, /Unknown image model "invalid"/);
         return true;
@@ -52,7 +53,8 @@ describe("ImageBackend", () => {
   it("createImageBackend throws when qwen is missing runpodHttp", () => {
     assert.throws(
       () => createImageBackend("qwen"),
-      (err: any) => {
+      (err: unknown) => {
+        if (!(err instanceof Error)) return assert.fail("Expected Error");
         assert.match(err.message, /runpodHttp is required/);
         return true;
       },

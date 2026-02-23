@@ -5,10 +5,10 @@ import path from "node:path";
 import os from "node:os";
 import sharp from "sharp";
 import { createQwenBackend } from "./qwen-backend.ts";
-import type { HttpClient } from "./http.ts";
+import type { HttpClient, HttpRequestInit } from "./http.ts";
 import { HttpError, ImageBackendError } from "./errors.ts";
 
-function mockRunpodClient(impl: (path: string, init?: RequestInit) => Promise<Response>): HttpClient {
+function mockRunpodClient(impl: (path: string, init?: HttpRequestInit) => Promise<Response>): HttpClient {
   return {
     baseUrl: "https://api.runpod.ai/v2/qwen-image-edit",
     request: impl,
@@ -72,11 +72,11 @@ describe("QwenBackend", () => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
-    let submitBody: any;
+    let submitBody!: { input: { image: string; seed: number; prompt: string } };
     const http = mockRunpodClient(async (p, init) => {
       callNum++;
       if (callNum === 1) {
-        submitBody = JSON.parse(init?.body as string);
+        submitBody = JSON.parse(String(init?.body));
         return new Response(JSON.stringify({ id: "job-2" }));
       }
       if (callNum === 2) {
@@ -127,8 +127,8 @@ describe("QwenBackend", () => {
     const backend = createQwenBackend(http);
     await assert.rejects(
       () => backend.generate({ prompt: "fail test", seed: -1, wide: false }),
-      (err: any) => {
-        assert.ok(ImageBackendError.is(err));
+      (err: unknown) => {
+        if (!ImageBackendError.is(err)) return assert.fail("Expected ImageBackendError");
         assert.equal(err.type, "runpod_job_failed");
         assert.match(err.message, /RunPod job job-fail failed/);
         assert.equal(err.meta.jobId, "job-fail");
@@ -147,8 +147,8 @@ describe("QwenBackend", () => {
     const backend = createQwenBackend(http);
     await assert.rejects(
       () => backend.generate({ prompt: "error test", seed: -1, wide: false }),
-      (err: any) => {
-        assert.ok(ImageBackendError.is(err));
+      (err: unknown) => {
+        if (!ImageBackendError.is(err)) return assert.fail("Expected ImageBackendError");
         assert.equal(err.type, "runpod_api_error");
         assert.equal(err.meta.status, 500);
         return true;
@@ -180,8 +180,8 @@ describe("QwenBackend", () => {
     const backend = createQwenBackend(http);
     await assert.rejects(
       () => backend.generate({ prompt: "download fail", seed: -1, wide: false }),
-      (err: any) => {
-        assert.ok(ImageBackendError.is(err));
+      (err: unknown) => {
+        if (!ImageBackendError.is(err)) return assert.fail("Expected ImageBackendError");
         assert.equal(err.type, "download_failed");
         assert.equal(err.meta.status, 404);
         return true;
