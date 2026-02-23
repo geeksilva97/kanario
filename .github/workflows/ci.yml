@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   unit-tests:
     name: Unit Tests
@@ -78,3 +82,46 @@ jobs:
           name: smoke-test-output
           path: output/
           retention-days: 7
+
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [unit-tests, type-check, integration-tests, smoke-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and push image
+        run: |
+          gcloud builds submit --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$SERVICE_NAME" --project "$PROJECT_ID"
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          REGION: southamerica-east1
+          REPO_NAME: kanario
+          SERVICE_NAME: kanario-discord
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$SERVICE_NAME" \
+            --region "$REGION" \
+            --project "$PROJECT_ID" \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 300 \
+            --no-cpu-throttling \
+            --min-instances 0 \
+            --max-instances 3 \
+            --add-volume name=creds-vol,type=cloud-storage,bucket=kanario-credentials \
+            --add-volume-mount volume=creds-vol,mount-path=/app/data
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          REGION: southamerica-east1
+          REPO_NAME: kanario
+          SERVICE_NAME: kanario-discord
