@@ -1,3 +1,4 @@
+import type { HttpClient } from "../http.ts";
 import type { WPCredentials } from "../credentials.ts";
 import type { GenerateOptions, GenerateResult } from "../workflows/generate.ts";
 import type { ImproveOptions, ImproveResult } from "../workflows/improve.ts";
@@ -15,8 +16,8 @@ export interface DiscordMessenger {
 }
 
 export interface WordPressClient {
-  resolvePostId(creds: WPCredentials, raw: string): Promise<string>;
-  fetchDraft(creds: WPCredentials, postId: string): Promise<{ title: string; content: string; excerpt: string }>;
+  resolvePostId(http: HttpClient, raw: string): Promise<string>;
+  fetchDraft(http: HttpClient, postId: string): Promise<{ title: string; content: string; excerpt: string }>;
   validateCredentials(creds: WPCredentials): Promise<{ valid: boolean; displayName?: string; error?: string }>;
 }
 
@@ -31,6 +32,7 @@ export interface CommandDeps {
   discord: DiscordMessenger;
   wordpress: WordPressClient;
   workflows: Workflows;
+  createWpClient(creds: WPCredentials): HttpClient;
   resolveImagePath(postId: string, imageArg: string): string;
   outputDir: string;
   downloadImage(url: string): Promise<{ path: string; cleanup: () => void }>;

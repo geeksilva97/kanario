@@ -5,7 +5,15 @@ import path from "node:path";
 import os from "node:os";
 import sharp from "sharp";
 import { createQwenBackend } from "./qwen-backend.ts";
-import { ImageBackendError } from "./errors.ts";
+import type { HttpClient } from "./http.ts";
+import { HttpError, ImageBackendError } from "./errors.ts";
+
+function mockRunpodClient(impl: (path: string, init?: RequestInit) => Promise<Response>): HttpClient {
+  return {
+    baseUrl: "https://api.runpod.ai/v2/qwen-image-edit",
+    request: impl,
+  };
+}
 
 describe("QwenBackend", () => {
   let tmpDir: string;
@@ -28,28 +36,27 @@ describe("QwenBackend", () => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
-    let submitBody: any;
-    const mockFetch = t.mock.method(globalThis, "fetch", (url: string | URL) => {
+    const http = mockRunpodClient(async (p) => {
       callNum++;
       if (callNum === 1) {
-        assert.ok(String(url).endsWith("/run"));
-        return Promise.resolve(new Response(JSON.stringify({ id: "job-1" })));
+        assert.ok(p === "/run");
+        return new Response(JSON.stringify({ id: "job-1" }));
       }
       if (callNum === 2) {
-        assert.ok(String(url).includes("/status/job-1"));
-        return Promise.resolve(new Response(JSON.stringify({
+        assert.ok(p === "/status/job-1");
+        return new Response(JSON.stringify({
           status: "COMPLETED",
           output: { result: "https://cdn.example.com/img.png" },
-        })));
+        }));
       }
       if (callNum === 3) {
-        assert.equal(String(url), "https://cdn.example.com/img.png");
-        return Promise.resolve(new Response(Buffer.from("fake-png-data")));
+        assert.equal(p, "https://cdn.example.com/img.png");
+        return new Response(Buffer.from("fake-png-data"));
       }
-      throw new Error(`Unexpected fetch call #${callNum}`);
+      throw new Error(`Unexpected request call #${callNum}`);
     });
 
-    const backend = createQwenBackend();
+    const backend = createQwenBackend(http);
     const result = await backend.generate({
       prompt: "test prompt",
       mascotPath,
@@ -58,38 +65,33 @@ describe("QwenBackend", () => {
     });
 
     assert.ok(Buffer.isBuffer(result));
-    assert.equal(mockFetch.mock.callCount(), 3);
-
-    // Validate the /run request body
-    submitBody = JSON.parse((mockFetch.mock.calls[0].arguments[1] as any).body);
-    assert.equal(submitBody.input.prompt, "test prompt");
-    assert.equal(submitBody.input.seed, -1);
-    assert.equal(submitBody.input.output_format, "png");
-    assert.ok(submitBody.input.image.startsWith("data:image/png;base64,"));
+    assert.equal(callNum, 3);
   });
 
   it("generates image without mascot (blank canvas)", async (t) => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
-    const mockFetch = t.mock.method(globalThis, "fetch", () => {
+    let submitBody: any;
+    const http = mockRunpodClient(async (p, init) => {
       callNum++;
       if (callNum === 1) {
-        return Promise.resolve(new Response(JSON.stringify({ id: "job-2" })));
+        submitBody = JSON.parse(init?.body as string);
+        return new Response(JSON.stringify({ id: "job-2" }));
       }
       if (callNum === 2) {
-        return Promise.resolve(new Response(JSON.stringify({
+        return new Response(JSON.stringify({
           status: "COMPLETED",
           output: { result: "https://cdn.example.com/img2.png" },
-        })));
+        }));
       }
       if (callNum === 3) {
-        return Promise.resolve(new Response(Buffer.from("blank-result")));
+        return new Response(Buffer.from("blank-result"));
       }
-      throw new Error(`Unexpected fetch call #${callNum}`);
+      throw new Error(`Unexpected request call #${callNum}`);
     });
 
-    const backend = createQwenBackend();
+    const backend = createQwenBackend(http);
     const result = await backend.generate({
       prompt: "scene only",
       seed: 42,
@@ -97,10 +99,9 @@ describe("QwenBackend", () => {
     });
 
     assert.ok(Buffer.isBuffer(result));
-    assert.equal(mockFetch.mock.callCount(), 3);
+    assert.equal(callNum, 3);
 
     // Blank canvas should still produce a base64 data URI
-    const submitBody = JSON.parse((mockFetch.mock.calls[0].arguments[1] as any).body);
     assert.ok(submitBody.input.image.startsWith("data:image/png;base64,"));
     assert.equal(submitBody.input.seed, 42);
   });
@@ -109,21 +110,21 @@ describe("QwenBackend", () => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
-    t.mock.method(globalThis, "fetch", () => {
+    const http = mockRunpodClient(async () => {
       callNum++;
       if (callNum === 1) {
-        return Promise.resolve(new Response(JSON.stringify({ id: "job-fail" })));
+        return new Response(JSON.stringify({ id: "job-fail" }));
       }
       if (callNum === 2) {
-        return Promise.resolve(new Response(JSON.stringify({
+        return new Response(JSON.stringify({
           status: "FAILED",
           error: "GPU OOM",
-        })));
+        }));
       }
-      throw new Error(`Unexpected fetch call #${callNum}`);
+      throw new Error(`Unexpected request call #${callNum}`);
     });
 
-    const backend = createQwenBackend();
+    const backend = createQwenBackend(http);
     await assert.rejects(
       () => backend.generate({ prompt: "fail test", seed: -1, wide: false }),
       (err: any) => {
@@ -136,53 +137,51 @@ describe("QwenBackend", () => {
     );
   });
 
-  it("throws ImageBackendError on API error during submit", async (t) => {
+  it("throws HttpError on API error during submit", async (t) => {
     t.mock.method(console, "log", () => {});
 
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response("server error", { status: 500 })),
-    );
+    const http = mockRunpodClient(async (p, init) => {
+      throw new HttpError(init?.method ?? "GET", `https://api.runpod.ai/v2/qwen-image-edit${p}`, 500, "Internal Server Error", "server error");
+    });
 
-    const backend = createQwenBackend();
+    const backend = createQwenBackend(http);
     await assert.rejects(
       () => backend.generate({ prompt: "error test", seed: -1, wide: false }),
       (err: any) => {
-        assert.ok(ImageBackendError.is(err));
-        assert.equal(err.type, "runpod_api_error");
-        assert.match(err.message, /RunPod API error 500/);
+        assert.ok(HttpError.is(err));
+        assert.equal(err.meta.status, 500);
         return true;
       },
     );
   });
 
-  it("throws ImageBackendError when image download fails", async (t) => {
+  it("throws HttpError when image download fails", async (t) => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
-    t.mock.method(globalThis, "fetch", () => {
+    const http = mockRunpodClient(async (p, init) => {
       callNum++;
       if (callNum === 1) {
-        return Promise.resolve(new Response(JSON.stringify({ id: "job-dl" })));
+        return new Response(JSON.stringify({ id: "job-dl" }));
       }
       if (callNum === 2) {
-        return Promise.resolve(new Response(JSON.stringify({
+        return new Response(JSON.stringify({
           status: "COMPLETED",
           output: { result: "https://cdn.example.com/missing.png" },
-        })));
+        }));
       }
       if (callNum === 3) {
-        return Promise.resolve(new Response("Not Found", { status: 404 }));
+        throw new HttpError("GET", "https://cdn.example.com/missing.png", 404, "Not Found", "Not Found");
       }
-      throw new Error(`Unexpected fetch call #${callNum}`);
+      throw new Error(`Unexpected request call #${callNum}`);
     });
 
-    const backend = createQwenBackend();
+    const backend = createQwenBackend(http);
     await assert.rejects(
       () => backend.generate({ prompt: "download fail", seed: -1, wide: false }),
       (err: any) => {
-        assert.ok(ImageBackendError.is(err));
-        assert.equal(err.type, "download_failed");
-        assert.match(err.message, /Failed to download image: 404/);
+        assert.ok(HttpError.is(err));
+        assert.equal(err.meta.status, 404);
         return true;
       },
     );

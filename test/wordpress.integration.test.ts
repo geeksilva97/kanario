@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { fetchDraft } from "../src/wordpress.ts";
-import { credentialsFromEnv } from "../src/credentials.ts";
+import { credentialsFromEnv, createWpClient } from "../src/credentials.ts";
 
 // Known post IDs on blog.codeminer42.com
 const PUBLISHED_POST_ID = "12518";
@@ -9,10 +9,11 @@ const DRAFT_POST_ID = "12487";
 const NONEXISTENT_POST_ID = "999999";
 
 const creds = credentialsFromEnv();
+const wpHttp = createWpClient(creds);
 
 describe("WordPress integration", () => {
   it("fetches a published post", async () => {
-    const post = await fetchDraft(creds, PUBLISHED_POST_ID);
+    const post = await fetchDraft(wpHttp, PUBLISHED_POST_ID);
 
     assert.ok(post.title.length > 0, "title should not be empty");
     assert.ok(post.content.length > 0, "content should not be empty");
@@ -22,7 +23,7 @@ describe("WordPress integration", () => {
   });
 
   it("returns plain text without HTML tags", async () => {
-    const post = await fetchDraft(creds, PUBLISHED_POST_ID);
+    const post = await fetchDraft(wpHttp, PUBLISHED_POST_ID);
 
     assert.ok(!/<[^>]+>/.test(post.title), "title should not contain HTML");
     assert.ok(!/<[^>]+>/.test(post.content), "content should not contain HTML");
@@ -30,7 +31,7 @@ describe("WordPress integration", () => {
   });
 
   it("fetches a draft post with valid credentials", async () => {
-    const post = await fetchDraft(creds, DRAFT_POST_ID);
+    const post = await fetchDraft(wpHttp, DRAFT_POST_ID);
 
     assert.ok(post.title.length > 0, "draft title should not be empty");
     assert.ok(post.content.length > 0, "draft content should not be empty");
@@ -39,7 +40,7 @@ describe("WordPress integration", () => {
 
   it("throws on nonexistent post", async () => {
     await assert.rejects(
-      () => fetchDraft(creds, NONEXISTENT_POST_ID),
+      () => fetchDraft(wpHttp, NONEXISTENT_POST_ID),
       (err: Error) => {
         assert.ok(err.message.includes("404"), "should mention 404");
         return true;
@@ -49,9 +50,10 @@ describe("WordPress integration", () => {
 
   it("throws on draft with bad credentials", async () => {
     const badCreds = { ...creds, wpAppPassword: "wrong-password" };
+    const badHttp = createWpClient(badCreds);
 
     await assert.rejects(
-      () => fetchDraft(badCreds, DRAFT_POST_ID),
+      () => fetchDraft(badHttp, DRAFT_POST_ID),
       (err: Error) => {
         assert.ok(
           err.message.includes("401"),

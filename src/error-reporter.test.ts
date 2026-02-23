@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { formatError } from "./error-reporter.ts";
-import { WordPressError, ImageBackendError, ConfigError, FileError, KanarioError } from "./errors.ts";
+import { HttpError, ImageBackendError, ConfigError, FileError, KanarioError } from "./errors.ts";
 
 describe("formatError", () => {
   it("returns message for KanarioError with no hint", () => {
@@ -19,35 +19,36 @@ describe("formatError", () => {
     assert.equal(formatError(null), "null");
   });
 
-  describe("WordPressError hints", () => {
-    it("hints on 401 status", () => {
-      const err = WordPressError.fetchFailed("123", 401, "Unauthorized");
+  describe("HttpError hints", () => {
+    it("hints on 401 status for WordPress URLs", () => {
+      const err = new HttpError("GET", "https://blog.example.com/wp-json/wp/v2/posts/123", 401, "Unauthorized", "");
       const result = formatError(err);
-      assert.ok(result.includes("Failed to fetch post 123"));
+      assert.ok(result.includes("failed: 401"));
       assert.ok(result.includes("Check WP_USERNAME and WP_APP_PASSWORD"));
     });
 
-    it("hints on 403 status", () => {
-      const err = WordPressError.setFeaturedFailed(403, "Forbidden");
+    it("hints on 403 status for WordPress URLs", () => {
+      const err = new HttpError("POST", "https://blog.example.com/wp-json/wp/v2/posts/123", 403, "Forbidden", "");
       const result = formatError(err);
       assert.ok(result.includes("Check WP_USERNAME and WP_APP_PASSWORD"));
     });
 
-    it("hints on 404 status", () => {
-      const err = WordPressError.fetchFailed("999", 404, "Not Found");
+    it("hints on 404 status for WordPress URLs", () => {
+      const err = new HttpError("GET", "https://blog.example.com/wp-json/wp/v2/posts/999", 404, "Not Found", "");
       const result = formatError(err);
       assert.ok(result.includes("The post ID may be wrong"));
     });
 
-    it("no hint on 500 status", () => {
-      const err = WordPressError.uploadFailed(500, "Internal Server Error");
+    it("no hint on 500 status for WordPress URLs", () => {
+      const err = new HttpError("POST", "https://blog.example.com/wp-json/wp/v2/media", 500, "Internal Server Error", "");
       const result = formatError(err);
       assert.equal(result, err.message);
     });
 
-    it("no hint for slug not found (no status in meta)", () => {
-      const err = WordPressError.slugNotFound("my-post");
-      assert.equal(formatError(err), err.message);
+    it("no hint for non-WordPress URLs", () => {
+      const err = new HttpError("POST", "https://api.runpod.ai/v2/qwen/run", 500, "Internal Server Error", "body");
+      const result = formatError(err);
+      assert.equal(result, err.message);
     });
   });
 
@@ -59,7 +60,7 @@ describe("formatError", () => {
     });
 
     it("no hint for other image backend errors", () => {
-      const err = ImageBackendError.runpodApiError(500, "error");
+      const err = ImageBackendError.noImageData();
       assert.equal(formatError(err), err.message);
     });
   });

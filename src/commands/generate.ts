@@ -1,5 +1,5 @@
 import type { ImageModel } from "../image-backend.ts";
-import { credentialsFromEnv } from "../credentials.ts";
+import { credentialsFromEnv, createWpClient } from "../credentials.ts";
 import { resolvePostId } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 import { formatError } from "../error-reporter.ts";
@@ -14,7 +14,8 @@ export async function generate(
     process.exit(1);
   }
 
-  const postId = await resolvePostId(creds, positionals[0]);
+  const wpHttp = createWpClient(creds);
+  const postId = await resolvePostId(wpHttp, positionals[0]);
   const model = values.model as string;
   const imageModel = (values["image-model"] || "qwen") as ImageModel;
   const outputDir = values.output;
@@ -33,7 +34,7 @@ export async function generate(
 
   try {
     const result = await generateWorkflow(
-      { creds, postId, model, imageModel, outputDir, wide, hint },
+      { wpHttp, postId, model, imageModel, outputDir, wide, hint },
       (msg) => console.log(msg),
     );
     console.log(`\nDone! Generated ${result.imagePaths.length} images in ${result.outputDir}`);

@@ -184,7 +184,7 @@ function isInGuild(interaction: any): boolean {
 const CLOCK_SPINNER = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"];
 
 export function makeCommandHandler(deps: CommandDeps) {
-  const { credentialStore, discord, wordpress, workflows, resolveImagePath, outputDir, downloadImage } = deps;
+  const { credentialStore, discord, wordpress, workflows, createWpClient, resolveImagePath, outputDir, downloadImage } = deps;
 
   async function handleGenerate(interaction: any) {
     const token = interaction.token;
@@ -205,7 +205,8 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
 
     try {
-      const postId = await wordpress.resolvePostId(creds, rawPostId);
+      const wpHttp = createWpClient(creds);
+      const postId = await wordpress.resolvePostId(wpHttp, rawPostId);
       let progress = "";
       let step = 0;
       const onProgress = (msg: string) => {
@@ -215,7 +216,7 @@ export function makeCommandHandler(deps: CommandDeps) {
       };
 
       const result = await workflows.generate(
-        { creds, postId, model, imageModel, wide: true, hint },
+        { wpHttp, postId, model, imageModel, wide: true, hint },
         onProgress,
       );
 
@@ -253,11 +254,12 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
 
     try {
-      const postId = await wordpress.resolvePostId(creds, rawPostId);
+      const wpHttp = createWpClient(creds);
+      const postId = await wordpress.resolvePostId(wpHttp, rawPostId);
       const imagePath = resolveImagePath(postId, imageArg);
-      const post = await wordpress.fetchDraft(creds, postId);
+      const post = await wordpress.fetchDraft(wpHttp, postId);
 
-      const result = await workflows.pick({ creds, postId, imagePath });
+      const result = await workflows.pick({ wpHttp, postId, imagePath });
       const mention = getUserMention(interaction);
 
       await discord.editOriginalMessage(

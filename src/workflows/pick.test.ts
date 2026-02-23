@@ -4,13 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { pickWorkflow } from "./pick.ts";
-import type { WPCredentials } from "../credentials.ts";
-import { FileError, WordPressError } from "../errors.ts";
+import type { HttpClient } from "../http.ts";
+import { FileError, HttpError } from "../errors.ts";
 
-const fakeCreds: WPCredentials = {
-  wpUrl: "https://blog.codeminer42.com",
-  wpUsername: "testuser",
-  wpAppPassword: "xxxx xxxx xxxx",
+const fakeHttp: HttpClient = {
+  baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+  request: async () => new Response("{}"),
 };
 
 describe("pickWorkflow", () => {
@@ -25,7 +24,7 @@ describe("pickWorkflow", () => {
 
   it("throws FileError when file does not exist", async () => {
     await assert.rejects(
-      () => pickWorkflow({ creds: fakeCreds, postId: "123", imagePath: "/nonexistent/image.png" }),
+      () => pickWorkflow({ wpHttp: fakeHttp, postId: "123", imagePath: "/nonexistent/image.png" }),
       (err: any) => {
         assert.ok(FileError.is(err));
         assert.equal(err.type, "image_not_found");
@@ -35,25 +34,28 @@ describe("pickWorkflow", () => {
     );
   });
 
-  it("uploads and sets featured image", async (t) => {
+  it("uploads and sets featured image", async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-pick-test-"));
     tmpImage = path.join(tmpDir, "test.png");
     fs.writeFileSync(tmpImage, "fake-png");
 
     let callNum = 0;
-    t.mock.method(globalThis, "fetch", () => {
-      callNum++;
-      if (callNum === 1) {
-        return Promise.resolve(new Response(JSON.stringify({ id: 42 })));
-      }
-      if (callNum === 2) {
-        return Promise.resolve(new Response("{}"));
-      }
-      throw new Error(`Unexpected fetch call #${callNum}`);
-    });
+    const http: HttpClient = {
+      baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+      request: async () => {
+        callNum++;
+        if (callNum === 1) {
+          return new Response(JSON.stringify({ id: 42 }));
+        }
+        if (callNum === 2) {
+          return new Response("{}");
+        }
+        throw new Error(`Unexpected request call #${callNum}`);
+      },
+    };
 
     const result = await pickWorkflow({
-      creds: fakeCreds,
+      wpHttp: http,
       postId: "123",
       imagePath: tmpImage,
     });
@@ -61,21 +63,23 @@ describe("pickWorkflow", () => {
     assert.equal(result.mediaId, 42);
   });
 
-  it("throws WordPressError when upload fails", async (t) => {
+  it("throws HttpError when upload fails", async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-pick-test-"));
     tmpImage = path.join(tmpDir, "test.png");
     fs.writeFileSync(tmpImage, "fake-png");
 
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response("Server Error", { status: 500, statusText: "Internal Server Error" })),
-    );
+    const http: HttpClient = {
+      baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+      request: async (_p, init) => {
+        throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 500, "Internal Server Error", "Server Error");
+      },
+    };
 
     await assert.rejects(
-      () => pickWorkflow({ creds: fakeCreds, postId: "123", imagePath: tmpImage }),
+      () => pickWorkflow({ wpHttp: http, postId: "123", imagePath: tmpImage }),
       (err: any) => {
-        assert.ok(WordPressError.is(err));
-        assert.equal(err.type, "wp_upload_failed");
-        assert.match(err.message, /Failed to upload media: 500 Internal Server Error/);
+        assert.ok(HttpError.is(err));
+        assert.equal(err.meta.status, 500);
         return true;
       },
     );

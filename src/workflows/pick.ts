@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { WPCredentials } from "../credentials.ts";
+import type { HttpClient } from "../http.ts";
 import { uploadMedia, setFeaturedImage } from "../wordpress.ts";
 import { FileError } from "../errors.ts";
 
 export interface PickOptions {
-  creds: WPCredentials;
+  wpHttp: HttpClient;
   postId: string;
   imagePath: string;
 }
@@ -15,7 +15,7 @@ export interface PickResult {
 }
 
 export async function pickWorkflow(options: PickOptions): Promise<PickResult> {
-  const { creds, postId, imagePath } = options;
+  const { wpHttp, postId, imagePath } = options;
 
   // Validate file exists (cheap local check first)
   if (!fs.existsSync(imagePath)) {
@@ -24,10 +24,10 @@ export async function pickWorkflow(options: PickOptions): Promise<PickResult> {
 
   // Upload
   const filename = path.basename(imagePath);
-  const mediaId = await uploadMedia(creds, imagePath, filename);
+  const mediaId = await uploadMedia(wpHttp, imagePath, filename);
 
   // Set featured image
-  await setFeaturedImage(creds, postId, mediaId);
+  await setFeaturedImage(wpHttp, postId, mediaId);
 
   return { mediaId };
 }

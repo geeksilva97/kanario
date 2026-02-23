@@ -1,7 +1,7 @@
 import path from "node:path";
 import readline from "node:readline/promises";
 import { OUTPUT_DIR } from "../config.ts";
-import { credentialsFromEnv } from "../credentials.ts";
+import { credentialsFromEnv, createWpClient } from "../credentials.ts";
 import { fetchDraft, resolvePostId } from "../wordpress.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
 import { formatError } from "../error-reporter.ts";
@@ -29,11 +29,12 @@ export async function pick(positionals: string[]) {
     process.exit(1);
   }
 
-  const postId = await resolvePostId(creds, rawPostId);
+  const wpHttp = createWpClient(creds);
+  const postId = await resolvePostId(wpHttp, rawPostId);
   const imagePath = resolveImagePath(postId, imageArg);
 
   // Fetch post title for confirmation display
-  const post = await fetchDraft(creds, postId);
+  const post = await fetchDraft(wpHttp, postId);
 
   console.log(`\n  Post:  ${post.title}`);
   console.log(`  Image: ${imagePath}`);
@@ -49,7 +50,7 @@ export async function pick(positionals: string[]) {
 
   try {
     console.log(`\nUploading ${path.basename(imagePath)} ...`);
-    const result = await pickWorkflow({ creds, postId, imagePath });
+    const result = await pickWorkflow({ wpHttp, postId, imagePath });
     console.log(`  Media ID: ${result.mediaId}`);
     console.log(`\nDone! Featured image set for "${post.title}".`);
     process.exit(0);

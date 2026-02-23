@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { config, OUTPUT_DIR } from "../config.ts";
-import { validateWPCredentials } from "../credentials.ts";
+import { validateWPCredentials, createWpClient } from "../credentials.ts";
 import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
 import { resolvePostId, fetchDraft } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
@@ -63,6 +63,7 @@ export function buildApp() {
       improve: improveWorkflow,
       pick: pickWorkflow,
     },
+    createWpClient,
     resolveImagePath,
     outputDir: OUTPUT_DIR,
     downloadImage: makeImageDownloader(),

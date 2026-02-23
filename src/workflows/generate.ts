@@ -1,17 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { config, OUTPUT_DIR, MASCOTS, type MascotId } from "../config.ts";
-import type { WPCredentials } from "../credentials.ts";
+import type { HttpClient } from "../http.ts";
 import { fetchDraft } from "../wordpress.ts";
 import { generatePrompts as claudeGeneratePrompts, type ImagePrompt } from "../prompt-generator.ts";
 import { generatePrompts as geminiGeneratePrompts } from "../gemini-generator.ts";
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
+import { createRunpodClient } from "../qwen-backend.ts";
 import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
 import { ConfigError } from "../errors.ts";
 
 export interface GenerateOptions {
-  creds: WPCredentials;
+  wpHttp: HttpClient;
   postId: string;
   model: "gemini" | "claude";
   imageModel?: ImageModel;
@@ -31,7 +32,7 @@ export async function generateWorkflow(
   options: GenerateOptions,
   onProgress?: (msg: string) => void,
 ): Promise<GenerateResult> {
-  const { creds, postId, model, imageModel = "qwen", outputDir: customOutputDir, wide, hint } = options;
+  const { wpHttp, postId, model, imageModel = "qwen", outputDir: customOutputDir, wide, hint } = options;
   const log = onProgress ?? (() => {});
 
   if (model !== "claude" && model !== "gemini") {
@@ -48,13 +49,14 @@ export async function generateWorkflow(
     throw ConfigError.missingEnvVars(missing);
   }
 
-  const backend = createImageBackend(imageModel);
+  const runpodHttp = imageModel === "qwen" ? createRunpodClient() : undefined;
+  const backend = createImageBackend(imageModel, runpodHttp);
 
   const generatePrompts = model === "gemini" ? geminiGeneratePrompts : claudeGeneratePrompts;
 
   // Step 1: Fetch WordPress draft
-  log(`[1/5] Fetching post ${postId} from ${creds.wpUrl} ...`);
-  const post = await fetchDraft(creds, postId);
+  log(`[1/5] Fetching post ${postId} from ${wpHttp.baseUrl} ...`);
+  const post = await fetchDraft(wpHttp, postId);
   log(`  Title: ${post.title}`);
   log(`  Content length: ${post.content.length} chars`);
 

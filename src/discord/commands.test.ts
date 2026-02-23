@@ -2,6 +2,12 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { makeCommandHandler, COMMAND_DEFINITIONS, HELP_TEXT } from "./commands.ts";
 import type { CommandDeps } from "./command-deps.ts";
+import type { HttpClient } from "../http.ts";
+
+const fakeHttp: HttpClient = {
+  baseUrl: "https://blog.example.com/wp-json/wp/v2",
+  request: async () => new Response("{}"),
+};
 
 function makeMockDeps(): CommandDeps & { _calls: Record<string, any[][]> } {
   const calls: Record<string, any[][]> = {};
@@ -43,6 +49,7 @@ function makeMockDeps(): CommandDeps & { _calls: Record<string, any[][]> } {
       })),
       pick: track("workflows.pick", async () => ({ mediaId: 42 })),
     },
+    createWpClient: track("createWpClient", () => fakeHttp),
     resolveImagePath: track("resolveImagePath", () => "/tmp/prompt-1.png"),
     outputDir: "/tmp/test-output",
     downloadImage: track("downloadImage", async () => ({ path: "/tmp/dl.png", cleanup: () => {} })),
@@ -269,6 +276,7 @@ describe("/generate", () => {
     handleInteraction(interaction);
     await tick();
 
+    assert.equal(deps._calls["createWpClient"].length, 1);
     assert.equal(deps._calls["wordpress.resolvePostId"].length, 1);
     assert.equal(deps._calls["workflows.generate"].length, 1);
 
@@ -320,6 +328,7 @@ describe("/pick", () => {
     handleInteraction(makeInteraction("pick", { post_id: "456", image: "2" }));
     await tick();
 
+    assert.equal(deps._calls["createWpClient"].length, 1);
     assert.equal(deps._calls["wordpress.resolvePostId"].length, 1);
     assert.equal(deps._calls["wordpress.fetchDraft"].length, 1);
     assert.equal(deps._calls["workflows.pick"].length, 1);

@@ -7,12 +7,18 @@ import sharp from "sharp";
 import { createImageBackend, padToWidescreen, encodeMascot, generateSingleImage, generateImages } from "./image-generator.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
 import { createNanoBananaBackend } from "./nano-banana-backend.ts";
+import type { HttpClient } from "./http.ts";
 import type { ImageBackend } from "./image-backend.ts";
 import { ImageBackendError } from "./errors.ts";
 
+const fakeRunpodHttp: HttpClient = {
+  baseUrl: "https://api.runpod.ai/v2/qwen-image-edit",
+  request: async () => new Response("{}"),
+};
+
 describe("ImageBackend", () => {
   it("createQwenBackend returns an object with generate method", () => {
-    const backend = createQwenBackend();
+    const backend = createQwenBackend(fakeRunpodHttp);
     assert.equal(typeof backend.generate, "function");
   });
 
@@ -22,7 +28,7 @@ describe("ImageBackend", () => {
   });
 
   it('createImageBackend("qwen") returns a backend', () => {
-    const backend = createImageBackend("qwen");
+    const backend = createImageBackend("qwen", fakeRunpodHttp);
     assert.equal(typeof backend.generate, "function");
   });
 
@@ -38,6 +44,16 @@ describe("ImageBackend", () => {
         assert.ok(ImageBackendError.is(err));
         assert.equal(err.type, "unknown_image_model");
         assert.match(err.message, /Unknown image model "invalid"/);
+        return true;
+      },
+    );
+  });
+
+  it("createImageBackend throws when qwen is missing runpodHttp", () => {
+    assert.throws(
+      () => createImageBackend("qwen"),
+      (err: any) => {
+        assert.match(err.message, /runpodHttp is required/);
         return true;
       },
     );

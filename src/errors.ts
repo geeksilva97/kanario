@@ -14,17 +14,23 @@ export class KanarioError extends Error {
   }
 }
 
+export class HttpError extends KanarioError {
+  static is(err: unknown): err is HttpError {
+    return err instanceof HttpError;
+  }
+
+  constructor(method: string, url: string, status: number, statusText: string, body: string) {
+    super(
+      "http_error",
+      `${method} ${url} failed: ${status} ${statusText}`,
+      { method, url, status, statusText, body },
+    );
+  }
+}
+
 export class WordPressError extends KanarioError {
   static is(err: unknown): err is WordPressError {
     return err instanceof WordPressError;
-  }
-
-  static fetchFailed(postId: string, status: number, statusText: string) {
-    return new WordPressError(
-      "wp_fetch_failed",
-      `Failed to fetch post ${postId}: ${status} ${statusText}`,
-      { postId, status, statusText },
-    );
   }
 
   static slugNotFound(slug: string) {
@@ -42,30 +48,6 @@ export class WordPressError extends KanarioError {
       { input },
     );
   }
-
-  static uploadFailed(status: number, statusText: string) {
-    return new WordPressError(
-      "wp_upload_failed",
-      `Failed to upload media: ${status} ${statusText}`,
-      { status, statusText },
-    );
-  }
-
-  static setFeaturedFailed(status: number, statusText: string) {
-    return new WordPressError(
-      "wp_set_featured_failed",
-      `Failed to set featured image: ${status} ${statusText}`,
-      { status, statusText },
-    );
-  }
-
-  static slugLookupFailed(slug: string, status: number, statusText: string) {
-    return new WordPressError(
-      "wp_slug_lookup_failed",
-      `Failed to look up slug "${slug}": ${status} ${statusText}`,
-      { slug, status, statusText },
-    );
-  }
 }
 
 export class ImageBackendError extends KanarioError {
@@ -73,27 +55,11 @@ export class ImageBackendError extends KanarioError {
     return err instanceof ImageBackendError;
   }
 
-  static runpodApiError(status: number, body: string) {
-    return new ImageBackendError(
-      "runpod_api_error",
-      `RunPod API error ${status}: ${body}`,
-      { status, body },
-    );
-  }
-
   static runpodJobFailed(jobId: string, statusPayload: unknown) {
     return new ImageBackendError(
       "runpod_job_failed",
       `RunPod job ${jobId} failed: ${JSON.stringify(statusPayload)}`,
       { jobId, statusPayload },
-    );
-  }
-
-  static downloadFailed(status: number) {
-    return new ImageBackendError(
-      "download_failed",
-      `Failed to download image: ${status}`,
-      { status },
     );
   }
 

@@ -1,33 +1,26 @@
 import sharp from "sharp";
 import { config } from "./config.ts";
+import { createHttpClient, type HttpClient } from "./http.ts";
 import { encodeMascot } from "./image-generator.ts";
 import type { ImageBackend } from "./image-backend.ts";
 import { ImageBackendError } from "./errors.ts";
 
-const RUNPOD_BASE = "https://api.runpod.ai/v2/qwen-image-edit";
 const POLL_INTERVAL_MS = 3_000;
 
-async function runpodRequest(endpoint: string, init?: RequestInit) {
-  const res = await fetch(`${RUNPOD_BASE}${endpoint}`, {
-    ...init,
+export function createRunpodClient(): HttpClient {
+  return createHttpClient({
+    baseUrl: "https://api.runpod.ai/v2/qwen-image-edit",
     headers: {
       Authorization: `Bearer ${config.runpodApiKey}`,
       "Content-Type": "application/json",
-      ...init?.headers,
     },
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw ImageBackendError.runpodApiError(res.status, text);
-  }
-
-  return res.json();
 }
 
-async function pollUntilCompleted(jobId: string): Promise<any> {
+async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<any> {
   while (true) {
-    const status = await runpodRequest(`/status/${jobId}`);
+    const res = await http.request(`/status/${jobId}`);
+    const status = await res.json();
 
     if (status.status === "COMPLETED") {
       return status;
@@ -41,7 +34,7 @@ async function pollUntilCompleted(jobId: string): Promise<any> {
   }
 }
 
-export function createQwenBackend(): ImageBackend {
+export function createQwenBackend(http: HttpClient): ImageBackend {
   return {
     async generate({ prompt, mascotPath, seed, wide }) {
       let mascotBase64: string;
@@ -66,20 +59,18 @@ export function createQwenBackend(): ImageBackend {
       };
 
       console.log(`    Submitting job to RunPod Hub ...`);
-      const { id: jobId } = await runpodRequest("/run", {
+      const submitRes = await http.request("/run", {
         method: "POST",
         body: JSON.stringify(body),
       });
+      const { id: jobId } = await submitRes.json();
 
       console.log(`    Job ${jobId} queued, polling for result ...`);
-      const result = await pollUntilCompleted(jobId);
+      const result = await pollUntilCompleted(http, jobId);
 
       const imageUrl = result.output.result;
       console.log(`    Downloading result image ...`);
-      const imageRes = await fetch(imageUrl);
-      if (!imageRes.ok) {
-        throw ImageBackendError.downloadFailed(imageRes.status);
-      }
+      const imageRes = await http.request(imageUrl);
       return Buffer.from(await imageRes.arrayBuffer());
     },
   };

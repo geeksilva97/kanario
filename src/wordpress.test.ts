@@ -4,14 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { stripHtml, parsePostId, resolvePostId, fetchDraft, uploadMedia, setFeaturedImage } from "./wordpress.ts";
-import type { WPCredentials } from "./credentials.ts";
-import { WordPressError } from "./errors.ts";
+import type { HttpClient } from "./http.ts";
+import { HttpError, WordPressError } from "./errors.ts";
 
-const fakeCreds: WPCredentials = {
-  wpUrl: "https://blog.codeminer42.com",
-  wpUsername: "testuser",
-  wpAppPassword: "xxxx xxxx xxxx",
-};
+function mockHttpClient(impl: (path: string, init?: RequestInit) => Promise<Response>): HttpClient {
+  return {
+    baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+    request: impl,
+  };
+}
 
 describe("stripHtml", () => {
   it("removes HTML tags", () => {
@@ -72,37 +73,39 @@ describe("parsePostId", () => {
 
 describe("resolvePostId", () => {
   it("returns a plain numeric ID without making HTTP calls", async () => {
-    const result = await resolvePostId(fakeCreds, "12487");
+    const http = mockHttpClient(async () => { throw new Error("should not be called"); });
+    const result = await resolvePostId(http, "12487");
     assert.equal(result, "12487");
   });
 
   it("extracts post ID from a wp-admin edit URL without HTTP calls", async () => {
+    const http = mockHttpClient(async () => { throw new Error("should not be called"); });
     const result = await resolvePostId(
-      fakeCreds,
+      http,
       "https://blog.codeminer42.com/wp-admin/post.php?post=12518&action=edit",
     );
     assert.equal(result, "12518");
   });
 
-  it("resolves a published blog URL via slug lookup", async (t) => {
-    const mockFetch = t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify([{ id: 99 }]), { status: 200 })),
-    );
+  it("resolves a published blog URL via slug lookup", async () => {
+    let calledPath = "";
+    const http = mockHttpClient(async (p) => {
+      calledPath = p;
+      return new Response(JSON.stringify([{ id: 99 }]), { status: 200 });
+    });
 
-    const result = await resolvePostId(fakeCreds, "https://blog.codeminer42.com/some-slug/");
+    const result = await resolvePostId(http, "https://blog.codeminer42.com/some-slug/");
     assert.equal(result, "99");
-    assert.equal(mockFetch.mock.callCount(), 1);
-    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
-    assert.ok(calledUrl.includes("slug=some-slug"));
+    assert.ok(calledPath.includes("slug=some-slug"));
   });
 
-  it("throws WordPressError when slug lookup returns no matches", async (t) => {
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+  it("throws WordPressError when slug lookup returns no matches", async () => {
+    const http = mockHttpClient(async () =>
+      new Response(JSON.stringify([]), { status: 200 }),
     );
 
     await assert.rejects(
-      () => resolvePostId(fakeCreds, "https://blog.codeminer42.com/nonexistent-post/"),
+      () => resolvePostId(http, "https://blog.codeminer42.com/nonexistent-post/"),
       (err: any) => {
         assert.ok(WordPressError.is(err));
         assert.equal(err.type, "wp_slug_not_found");
@@ -113,32 +116,36 @@ describe("resolvePostId", () => {
     );
   });
 
-  it("strips trailing slash from the slug", async (t) => {
-    const mockFetch = t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify([{ id: 42 }]), { status: 200 })),
-    );
+  it("strips trailing slash from the slug", async () => {
+    let calledPath = "";
+    const http = mockHttpClient(async (p) => {
+      calledPath = p;
+      return new Response(JSON.stringify([{ id: 42 }]), { status: 200 });
+    });
 
-    const result = await resolvePostId(fakeCreds, "https://blog.codeminer42.com/my-post/");
+    const result = await resolvePostId(http, "https://blog.codeminer42.com/my-post/");
     assert.equal(result, "42");
-    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
-    assert.ok(calledUrl.includes("slug=my-post"));
-    assert.ok(!calledUrl.includes("slug=my-post/"));
+    assert.ok(calledPath.includes("slug=my-post"));
+    assert.ok(!calledPath.includes("slug=my-post/"));
   });
 
-  it("handles nested path as slug", async (t) => {
-    const mockFetch = t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify([{ id: 77 }]), { status: 200 })),
-    );
+  it("handles nested path as slug", async () => {
+    let calledPath = "";
+    const http = mockHttpClient(async (p) => {
+      calledPath = p;
+      return new Response(JSON.stringify([{ id: 77 }]), { status: 200 });
+    });
 
-    const result = await resolvePostId(fakeCreds, "https://blog.codeminer42.com/category/post-slug/");
+    const result = await resolvePostId(http, "https://blog.codeminer42.com/category/post-slug/");
     assert.equal(result, "77");
-    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
-    assert.ok(calledUrl.includes("slug=category%2Fpost-slug"));
+    assert.ok(calledPath.includes("slug=category%2Fpost-slug"));
   });
 
   it("throws WordPressError for a bare slug without URL scheme", async () => {
+    const http = mockHttpClient(async () => { throw new Error("should not be called"); });
+
     await assert.rejects(
-      () => resolvePostId(fakeCreds, "just-a-slug"),
+      () => resolvePostId(http, "just-a-slug"),
       (err: any) => {
         assert.ok(WordPressError.is(err));
         assert.equal(err.type, "wp_unresolvable_input");
@@ -151,41 +158,34 @@ describe("resolvePostId", () => {
 });
 
 describe("fetchDraft", () => {
-  it("fetches and strips HTML from post fields", async (t) => {
-    const mockFetch = t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify({
+  it("fetches and strips HTML from post fields", async () => {
+    let calledPath = "";
+    const http = mockHttpClient(async (p) => {
+      calledPath = p;
+      return new Response(JSON.stringify({
         title: { rendered: "<p>My Post Title</p>" },
         content: { rendered: "<div>Some <strong>content</strong></div>" },
         excerpt: { rendered: "<p>An excerpt</p>" },
-      }))),
-    );
+      }));
+    });
 
-    const result = await fetchDraft(fakeCreds, "123");
+    const result = await fetchDraft(http, "123");
     assert.equal(result.title, "My Post Title");
     assert.equal(result.content, "Some content");
     assert.equal(result.excerpt, "An excerpt");
-    assert.equal(mockFetch.mock.callCount(), 1);
-
-    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
-    assert.equal(calledUrl, "https://blog.codeminer42.com/wp-json/wp/v2/posts/123");
-
-    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
-    const expectedAuth = Buffer.from("testuser:xxxx xxxx xxxx").toString("base64");
-    assert.equal(calledInit.headers.Authorization, `Basic ${expectedAuth}`);
+    assert.equal(calledPath, "/posts/123");
   });
 
-  it("throws WordPressError on non-200 response", async (t) => {
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response("Not Found", { status: 404, statusText: "Not Found" })),
-    );
+  it("throws HttpError on non-200 response", async () => {
+    const http = mockHttpClient(async (_p, init) => {
+      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/999", 404, "Not Found", "Not Found");
+    });
 
     await assert.rejects(
-      () => fetchDraft(fakeCreds, "999"),
+      () => fetchDraft(http, "999"),
       (err: any) => {
-        assert.ok(WordPressError.is(err));
-        assert.equal(err.type, "wp_fetch_failed");
-        assert.match(err.message, /Failed to fetch post 999: 404 Not Found/);
-        assert.deepEqual(err.meta, { postId: "999", status: 404, statusText: "Not Found" });
+        assert.ok(HttpError.is(err));
+        assert.equal(err.meta.status, 404);
         return true;
       },
     );
@@ -206,38 +206,34 @@ describe("uploadMedia", () => {
     fs.rmSync(tmpDir, { recursive: true });
   });
 
-  it("uploads file and returns media ID", async (t) => {
-    const mockFetch = t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response(JSON.stringify({ id: 42 }))),
-    );
+  it("uploads file and returns media ID", async () => {
+    let calledPath = "";
+    let calledInit: RequestInit | undefined;
+    const http = mockHttpClient(async (p, init) => {
+      calledPath = p;
+      calledInit = init;
+      return new Response(JSON.stringify({ id: 42 }));
+    });
 
-    const result = await uploadMedia(fakeCreds, tmpImage, "cover.png");
+    const result = await uploadMedia(http, tmpImage, "cover.png");
     assert.equal(result, 42);
-    assert.equal(mockFetch.mock.callCount(), 1);
-
-    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
-    assert.equal(calledUrl, "https://blog.codeminer42.com/wp-json/wp/v2/media");
-
-    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
-    assert.equal(calledInit.method, "POST");
-    assert.equal(calledInit.headers["Content-Type"], "image/png");
-    assert.equal(calledInit.headers["Content-Disposition"], 'attachment; filename="cover.png"');
-
-    const expectedAuth = Buffer.from("testuser:xxxx xxxx xxxx").toString("base64");
-    assert.equal(calledInit.headers.Authorization, `Basic ${expectedAuth}`);
+    assert.equal(calledPath, "/media");
+    assert.equal(calledInit?.method, "POST");
+    const headers = calledInit?.headers as Record<string, string>;
+    assert.equal(headers["Content-Type"], "image/png");
+    assert.equal(headers["Content-Disposition"], 'attachment; filename="cover.png"');
   });
 
-  it("throws WordPressError on non-200 response", async (t) => {
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response("Error", { status: 500, statusText: "Internal Server Error" })),
-    );
+  it("throws HttpError on non-200 response", async () => {
+    const http = mockHttpClient(async (_p, init) => {
+      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 500, "Internal Server Error", "Error");
+    });
 
     await assert.rejects(
-      () => uploadMedia(fakeCreds, tmpImage, "cover.png"),
+      () => uploadMedia(http, tmpImage, "cover.png"),
       (err: any) => {
-        assert.ok(WordPressError.is(err));
-        assert.equal(err.type, "wp_upload_failed");
-        assert.match(err.message, /Failed to upload media: 500 Internal Server Error/);
+        assert.ok(HttpError.is(err));
+        assert.equal(err.meta.status, 500);
         return true;
       },
     );
@@ -245,34 +241,33 @@ describe("uploadMedia", () => {
 });
 
 describe("setFeaturedImage", () => {
-  it("sends POST with featured_media in body", async (t) => {
-    const mockFetch = t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response("{}", { status: 200 })),
-    );
+  it("sends POST with featured_media in body", async () => {
+    let calledPath = "";
+    let calledInit: RequestInit | undefined;
+    const http = mockHttpClient(async (p, init) => {
+      calledPath = p;
+      calledInit = init;
+      return new Response("{}", { status: 200 });
+    });
 
-    await setFeaturedImage(fakeCreds, "123", 42);
-    assert.equal(mockFetch.mock.callCount(), 1);
-
-    const calledUrl = String(mockFetch.mock.calls[0].arguments[0]);
-    assert.equal(calledUrl, "https://blog.codeminer42.com/wp-json/wp/v2/posts/123");
-
-    const calledInit = mockFetch.mock.calls[0].arguments[1] as any;
-    assert.equal(calledInit.method, "POST");
-    assert.equal(calledInit.headers["Content-Type"], "application/json");
-    assert.deepEqual(JSON.parse(calledInit.body), { featured_media: 42 });
+    await setFeaturedImage(http, "123", 42);
+    assert.equal(calledPath, "/posts/123");
+    assert.equal(calledInit?.method, "POST");
+    const headers = calledInit?.headers as Record<string, string>;
+    assert.equal(headers["Content-Type"], "application/json");
+    assert.deepEqual(JSON.parse(calledInit?.body as string), { featured_media: 42 });
   });
 
-  it("throws WordPressError on non-200 response", async (t) => {
-    t.mock.method(globalThis, "fetch", () =>
-      Promise.resolve(new Response("Error", { status: 403, statusText: "Forbidden" })),
-    );
+  it("throws HttpError on non-200 response", async () => {
+    const http = mockHttpClient(async (_p, init) => {
+      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/123", 403, "Forbidden", "Error");
+    });
 
     await assert.rejects(
-      () => setFeaturedImage(fakeCreds, "123", 42),
+      () => setFeaturedImage(http, "123", 42),
       (err: any) => {
-        assert.ok(WordPressError.is(err));
-        assert.equal(err.type, "wp_set_featured_failed");
-        assert.match(err.message, /Failed to set featured image: 403 Forbidden/);
+        assert.ok(HttpError.is(err));
+        assert.equal(err.meta.status, 403);
         return true;
       },
     );

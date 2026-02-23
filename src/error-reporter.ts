@@ -1,10 +1,12 @@
-import { KanarioError, WordPressError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
+import { KanarioError, HttpError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
 
 function getHint(err: KanarioError): string | null {
-  if (err instanceof WordPressError) {
-    const { status } = err.meta;
-    if (status === 401 || status === 403) return "Check WP_USERNAME and WP_APP_PASSWORD — the credentials may be wrong or expired.";
-    if (status === 404) return "The post ID may be wrong, or the post hasn't been saved as a draft yet.";
+  if (err instanceof HttpError) {
+    const { url, status } = err.meta as { url: string; status: number };
+    if (String(url).includes("/wp-json/")) {
+      if (status === 401 || status === 403) return "Check WP_USERNAME and WP_APP_PASSWORD — the credentials may be wrong or expired.";
+      if (status === 404) return "The post ID may be wrong, or the post hasn't been saved as a draft yet.";
+    }
     return null;
   }
 

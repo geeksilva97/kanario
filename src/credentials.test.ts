@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { validateWPCredentials, credentialsFromEnv } from "./credentials.ts";
+import { validateWPCredentials, credentialsFromEnv, createWpClient } from "./credentials.ts";
 import { config } from "./config.ts";
 import type { WPCredentials } from "./credentials.ts";
 
@@ -39,6 +39,13 @@ describe("validateWPCredentials", () => {
     const result = await validateWPCredentials(fakeCreds);
     assert.equal(result.valid, false);
     assert.equal(result.error, "fetch failed");
+  });
+});
+
+describe("createWpClient", () => {
+  it("creates an HttpClient with correct baseUrl", () => {
+    const http = createWpClient(fakeCreds);
+    assert.equal(http.baseUrl, "https://blog.codeminer42.com/wp-json/wp/v2");
   });
 });
 

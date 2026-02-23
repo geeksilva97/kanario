@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { KanarioError, WordPressError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
+import { KanarioError, HttpError, WordPressError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
 
 describe("KanarioError", () => {
   it("sets type, message, and meta", () => {
@@ -29,20 +29,39 @@ describe("KanarioError", () => {
   });
 });
 
-describe("WordPressError", () => {
-  it("is() detects WordPressError but not sibling classes", () => {
-    assert.ok(WordPressError.is(WordPressError.fetchFailed("1", 404, "Not Found")));
-    assert.ok(!WordPressError.is(new ImageBackendError("t", "m")));
-    assert.ok(!WordPressError.is(new Error("plain")));
+describe("HttpError", () => {
+  it("sets type, message, and meta", () => {
+    const err = new HttpError("POST", "https://api.example.com/data", 500, "Internal Server Error", "body text");
+    assert.equal(err.type, "http_error");
+    assert.equal(err.message, "POST https://api.example.com/data failed: 500 Internal Server Error");
+    assert.deepEqual(err.meta, {
+      method: "POST",
+      url: "https://api.example.com/data",
+      status: 500,
+      statusText: "Internal Server Error",
+      body: "body text",
+    });
+    assert.equal(err.name, "HttpError");
   });
 
-  it(".fetchFailed() sets correct type, message, and meta", () => {
-    const err = WordPressError.fetchFailed("123", 404, "Not Found");
-    assert.ok(err instanceof WordPressError);
+  it("is() detects HttpError but not sibling classes", () => {
+    assert.ok(HttpError.is(new HttpError("GET", "/url", 404, "Not Found", "")));
+    assert.ok(!HttpError.is(new WordPressError("t", "m")));
+    assert.ok(!HttpError.is(new Error("plain")));
+  });
+
+  it("is a KanarioError", () => {
+    const err = new HttpError("GET", "/url", 404, "Not Found", "");
     assert.ok(err instanceof KanarioError);
-    assert.equal(err.type, "wp_fetch_failed");
-    assert.equal(err.message, "Failed to fetch post 123: 404 Not Found");
-    assert.deepEqual(err.meta, { postId: "123", status: 404, statusText: "Not Found" });
+    assert.ok(KanarioError.is(err));
+  });
+});
+
+describe("WordPressError", () => {
+  it("is() detects WordPressError but not sibling classes", () => {
+    assert.ok(WordPressError.is(WordPressError.slugNotFound("my-post")));
+    assert.ok(!WordPressError.is(new ImageBackendError("t", "m")));
+    assert.ok(!WordPressError.is(new Error("plain")));
   });
 
   it(".slugNotFound() sets correct type and meta", () => {
@@ -58,24 +77,6 @@ describe("WordPressError", () => {
     assert.equal(err.message, "Cannot resolve post from input: just-a-slug");
     assert.deepEqual(err.meta, { input: "just-a-slug" });
   });
-
-  it(".uploadFailed() sets correct type and meta", () => {
-    const err = WordPressError.uploadFailed(500, "Internal Server Error");
-    assert.equal(err.type, "wp_upload_failed");
-    assert.deepEqual(err.meta, { status: 500, statusText: "Internal Server Error" });
-  });
-
-  it(".setFeaturedFailed() sets correct type and meta", () => {
-    const err = WordPressError.setFeaturedFailed(403, "Forbidden");
-    assert.equal(err.type, "wp_set_featured_failed");
-    assert.deepEqual(err.meta, { status: 403, statusText: "Forbidden" });
-  });
-
-  it(".slugLookupFailed() sets correct type and meta", () => {
-    const err = WordPressError.slugLookupFailed("my-slug", 401, "Unauthorized");
-    assert.equal(err.type, "wp_slug_lookup_failed");
-    assert.deepEqual(err.meta, { slug: "my-slug", status: 401, statusText: "Unauthorized" });
-  });
 });
 
 describe("ImageBackendError", () => {
@@ -84,23 +85,11 @@ describe("ImageBackendError", () => {
     assert.ok(!ImageBackendError.is(new WordPressError("t", "m")));
   });
 
-  it(".runpodApiError() sets correct type and meta", () => {
-    const err = ImageBackendError.runpodApiError(500, "server error");
-    assert.equal(err.type, "runpod_api_error");
-    assert.deepEqual(err.meta, { status: 500, body: "server error" });
-  });
-
   it(".runpodJobFailed() sets correct type and meta", () => {
     const payload = { status: "FAILED", error: "OOM" };
     const err = ImageBackendError.runpodJobFailed("job-1", payload);
     assert.equal(err.type, "runpod_job_failed");
     assert.deepEqual(err.meta, { jobId: "job-1", statusPayload: payload });
-  });
-
-  it(".downloadFailed() sets correct type and meta", () => {
-    const err = ImageBackendError.downloadFailed(404);
-    assert.equal(err.type, "download_failed");
-    assert.deepEqual(err.meta, { status: 404 });
   });
 
   it(".noImageData() sets correct type", () => {

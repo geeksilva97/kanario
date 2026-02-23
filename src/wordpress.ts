@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import type { WPCredentials } from "./credentials.ts";
+import type { HttpClient } from "./http.ts";
 import { WordPressError } from "./errors.ts";
 
 export interface WPPost {
@@ -33,28 +33,11 @@ export function parsePostId(input: string): string {
   return input;
 }
 
-function buildAuth(creds: WPCredentials): string {
-  return Buffer.from(
-    `${creds.wpUsername}:${creds.wpAppPassword}`,
-  ).toString("base64");
-}
-
 async function fetchPostIdBySlug(
-  creds: WPCredentials,
+  http: HttpClient,
   slug: string,
 ): Promise<string> {
-  const url = `${creds.wpUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`;
-  const auth = buildAuth(creds);
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Basic ${auth}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw WordPressError.slugLookupFailed(slug, response.status, response.statusText);
-  }
+  const response = await http.request(`/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`);
 
   const data = await response.json();
   if (!Array.isArray(data) || data.length === 0) {
@@ -65,7 +48,7 @@ async function fetchPostIdBySlug(
 }
 
 export async function resolvePostId(
-  creds: WPCredentials,
+  http: HttpClient,
   input: string,
 ): Promise<string> {
   const parsed = parsePostId(input);
@@ -77,7 +60,7 @@ export async function resolvePostId(
     if (!slug) {
       throw new Error("URL has no path to extract slug from");
     }
-    return await fetchPostIdBySlug(creds, slug);
+    return await fetchPostIdBySlug(http, slug);
   } catch (err) {
     if (err instanceof TypeError) {
       // new URL() failed — not a valid URL
@@ -88,21 +71,10 @@ export async function resolvePostId(
 }
 
 export async function fetchDraft(
-  creds: WPCredentials,
+  http: HttpClient,
   postId: string,
 ): Promise<WPPost> {
-  const url = `${creds.wpUrl}/wp-json/wp/v2/posts/${postId}`;
-  const auth = buildAuth(creds);
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Basic ${auth}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw WordPressError.fetchFailed(postId, response.status, response.statusText);
-  }
+  const response = await http.request(`/posts/${postId}`);
 
   const data = await response.json();
 
@@ -114,51 +86,35 @@ export async function fetchDraft(
 }
 
 export async function uploadMedia(
-  creds: WPCredentials,
+  http: HttpClient,
   imagePath: string,
   filename: string,
 ): Promise<number> {
-  const url = `${creds.wpUrl}/wp-json/wp/v2/media`;
-  const auth = buildAuth(creds);
-
   const body = fs.readFileSync(imagePath);
 
-  const response = await fetch(url, {
+  const response = await http.request("/media", {
     method: "POST",
     headers: {
-      Authorization: `Basic ${auth}`,
       "Content-Type": "image/png",
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
     body,
   });
 
-  if (!response.ok) {
-    throw WordPressError.uploadFailed(response.status, response.statusText);
-  }
-
   const data = await response.json();
   return data.id;
 }
 
 export async function setFeaturedImage(
-  creds: WPCredentials,
+  http: HttpClient,
   postId: string,
   mediaId: number,
 ): Promise<void> {
-  const url = `${creds.wpUrl}/wp-json/wp/v2/posts/${postId}`;
-  const auth = buildAuth(creds);
-
-  const response = await fetch(url, {
+  await http.request(`/posts/${postId}`, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${auth}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ featured_media: mediaId }),
   });
-
-  if (!response.ok) {
-    throw WordPressError.setFeaturedFailed(response.status, response.statusText);
-  }
 }

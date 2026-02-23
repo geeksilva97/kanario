@@ -43,17 +43,18 @@ deploy/
 src/
 ├── index.ts                  # CLI entry point, parseArgs
 ├── config.ts                 # Env vars, mascot paths, style template, constants
-├── credentials.ts            # WPCredentials interface, validateWPCredentials, credentialsFromEnv
-├── errors.ts                 # KanarioError base + domain subclasses (WordPressError, ImageBackendError, ConfigError, FileError)
+├── credentials.ts            # WPCredentials interface, validateWPCredentials, credentialsFromEnv, createWpClient
+├── errors.ts                 # KanarioError base + domain subclasses (HttpError, WordPressError, ImageBackendError, ConfigError, FileError)
 ├── error-reporter.ts         # formatError() — message + actionable hints dispatched by error type
+├── http.ts                   # HttpClient interface + createHttpClient factory (base URL binding, header merging, ok-check)
 ├── store.ts                  # SQLite-backed credential store with AES-256-GCM encryption (node:sqlite)
-├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml (all take WPCredentials)
+├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml (all take HttpClient)
 ├── prompt-generator.ts       # Claude prompt generation, shared SYSTEM_PROMPT + buildFullPrompt
 ├── gemini-generator.ts       # Gemini prompt generation via @google/genai (Vertex AI Express)
 ├── summarizer.ts             # Pre-prompt summarization: extracts key points via LLM (Gemini or Claude)
 ├── image-backend.ts          # ImageBackend interface + ImageModel type
 ├── image-generator.ts        # Orchestrator: generateSingleImage, createImageBackend factory, shared utils
-├── qwen-backend.ts           # Qwen Image Edit on RunPod Hub (async submit → poll → download)
+├── qwen-backend.ts           # Qwen Image Edit on RunPod Hub (async submit → poll → download), createRunpodClient
 ├── nano-banana-backend.ts    # Gemini 2.5 Flash Image on Vertex AI (synchronous, returns base64)
 ├── types/
 │   └── sqlite.d.ts           # Type declarations for node:sqlite (experimental)
@@ -86,7 +87,8 @@ src/
 
 ## Key patterns
 
-- **Per-user WordPress credentials** — Discord bot users register their own WP credentials via `/register`. CLI uses env vars via `credentialsFromEnv()`. All WP functions take `WPCredentials` as first parameter.
+- **HttpClient dependency injection** — all HTTP calls go through the `HttpClient` interface (`src/http.ts`). `createHttpClient({ baseUrl, headers })` returns a client that prepends baseUrl, merges default headers, and throws `HttpError` on non-ok responses. Services receive a pre-configured client: `createWpClient(creds)` for WordPress (baseUrl + Basic auth), `createRunpodClient()` for RunPod. WP functions take `HttpClient` as first parameter. Absolute URLs (e.g. RunPod image downloads to CloudFront) bypass the baseUrl.
+- **Per-user WordPress credentials** — Discord bot users register their own WP credentials via `/register`. CLI uses env vars via `credentialsFromEnv()`. Callers create a WP client with `createWpClient(creds)` and pass it to WP functions.
 - **`/register` flow** — user DMs the bot with `/register wp_url username app_password`. The bot calls `GET /wp-json/wp/v2/users/me` with those credentials to validate. On success, credentials are saved to SQLite (app password encrypted with AES-256-GCM). Rejected in guild channels for security (password visible to others). `/generate` and `/pick` require registration — they load credentials from SQLite by Discord user ID.
 - **Discord credential commands** — `/register` (DMs only, validates + stores), `/unregister` (deletes stored credentials), `/whoami` (shows URL + username, no password), `/help` (explains how the bot works). All ephemeral (only visible to invoker). `/help` returns an immediate response; all others use deferred responses.
 - **Credential storage** — `node:sqlite` (experimental, `--experimental-sqlite` flag) with SQLite file at `/app/data/credentials.db` (production, GCS FUSE mount) or `./data/credentials.db` (local dev). Encryption key from `CREDENTIAL_ENCRYPTION_KEY` env var; no-op if unset.
@@ -101,8 +103,8 @@ src/
 - **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT` and `buildFullPrompt` from `prompt-generator.ts`. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
 - **Two mascots + none**: `miner` (mascot3d.png), `hat` (mascot-hat.png), or `none` (no mascot) — the LLM picks per prompt.
 - **Secondary characters** — use "cute round-bodied bot buddy" (never "robot" — Qwen confuses it with the mascot). Seed is `-1` (Qwen picks random).
-- **Custom error classes** — all errors use `KanarioError` subclasses (`WordPressError`, `ImageBackendError`, `ConfigError`, `FileError`) with `type` (machine-readable), `meta` (structured context), and static factory methods. Catch sites use `formatError(err)` from `error-reporter.ts` which appends actionable hints based on error type and metadata (e.g. "Check WP_USERNAME..." for 401s). Each class has a static `is()` type guard for dispatch.
-- **Discord command handler uses dependency injection** — `makeCommandHandler(deps)` is a factory that takes a `CommandDeps` object (credential store, Discord messenger, WordPress client, workflows, image downloader). `server.ts` is the composition root that wires real implementations. Tests inject mocks directly via the factory — no module mocking needed. Interfaces live in `command-deps.ts`.
+- **Custom error classes** — all errors use `KanarioError` subclasses with `type` (machine-readable), `meta` (structured context), and static factory methods. `HttpError` handles all HTTP failures (thrown by `HttpClient` on non-ok responses). Domain errors: `WordPressError` (slug not found, unresolvable input), `ImageBackendError` (job failed, no image data, retries exhausted), `ConfigError`, `FileError`. Catch sites use `formatError(err)` from `error-reporter.ts` which appends actionable hints — `HttpError` hints dispatch by URL pattern (wp-json → credential hints) and status code. Each class has a static `is()` type guard for dispatch.
+- **Discord command handler uses dependency injection** — `makeCommandHandler(deps)` is a factory that takes a `CommandDeps` object (credential store, Discord messenger, WordPress client, workflows, `createWpClient`, image downloader). `server.ts` is the composition root that wires real implementations. Tests inject mocks directly via the factory — no module mocking needed. Interfaces live in `command-deps.ts`.
 
 ## Testing
 
@@ -115,7 +117,7 @@ src/
 
 ### Mocking strategies
 
-- **`globalThis.fetch`** — all WP and RunPod HTTP calls use `globalThis.fetch`, so `t.mock.method(globalThis, "fetch", impl)` intercepts them. For sequential calls (e.g. Qwen submit → poll → download), use a counter variable to return different responses per call. The Anthropic SDK uses `node-fetch` internally, so `globalThis.fetch` mocking does **not** intercept Claude API calls.
+- **Mock `HttpClient`** — WP and RunPod tests inject a mock `HttpClient` object (`{ baseUrl, request: async (path, init) => Response }`) instead of mocking `globalThis.fetch`. Only `src/http.test.ts` mocks `globalThis.fetch` (to test `createHttpClient` itself). `credentials.test.ts` still mocks `globalThis.fetch` because `validateWPCredentials` creates its own client internally.
 - **`@google/genai` module mock** — the `@google/genai` SDK also calls `globalThis.fetch` under the hood, but mocking at the module level with `mock.module` is cleaner: replace `GoogleGenAI` with a fake class whose `models.generateContent` delegates to a swappable variable. Each test sets the variable to its own implementation before calling the code under test.
 - **File-level `mock.module` + swappable variable** — ESM caches modules, so calling `t.mock.module()` + `await import()` per test only works for the first test (subsequent imports return the cached module). Fix: call `mock.module()` once at file level (imported from `node:test`), use a file-scoped `let impl: Function` variable, `await import()` the module under test once after the mock, and swap `impl` per test. Use `t.mock.fn()` per test to track calls.
 - **`--experimental-test-module-mocks`** — required Node flag for `mock.module()`. Already added to `npm test` and `npm run test:coverage` scripts.

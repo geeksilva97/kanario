@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { config } from "../config.ts";
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
+import { createRunpodClient } from "../qwen-backend.ts";
 import type { ImageModel } from "../image-backend.ts";
 import { FileError, ConfigError } from "../errors.ts";
 
@@ -52,7 +53,8 @@ export async function improveWorkflow(
     throw ConfigError.missingEnvVars(missing);
   }
 
-  const backend = createImageBackend(imageModel);
+  const runpodHttp = imageModel === "qwen" ? createRunpodClient() : undefined;
+  const backend = createImageBackend(imageModel, runpodHttp);
 
   // Find next available prompt number
   const startNumber = nextPromptNumber(outputDir);
