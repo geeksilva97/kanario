@@ -3,3 +3,6 @@ output/
 .env
 .env.test
 .DS_Store
+.claude/
+data/
+*.db
