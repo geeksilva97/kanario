@@ -408,6 +408,29 @@ npm test              # unit tests — colocated *.test.ts files (no network, no
 ./test/smoke-hint.sh  # hint smoke test — validates hint precedence with 3 posts
 ```
 
+## CI/CD
+
+GitHub Actions runs on every push and PR to `main`. The pipeline has 4 jobs:
+
+| Job | Trigger | What it does |
+|---|---|---|
+| **Unit Tests** | all pushes & PRs | `npm test` — fast, no secrets needed |
+| **Type Check** | all pushes & PRs | `npx tsc --noEmit` |
+| **Integration Tests** | all pushes & PRs | Hits real WordPress API (needs WP secrets) |
+| **Smoke Tests** | push to `main` only | Generates real images, uploads output as artifact for visual inspection |
+
+### Required GitHub Secrets
+
+| Secret | Used by |
+|---|---|
+| `WP_URL` | Integration Tests, Smoke Tests |
+| `WP_USERNAME` | Integration Tests, Smoke Tests |
+| `WP_APP_PASSWORD` | Integration Tests, Smoke Tests |
+| `GEMINI_API_KEY` | Smoke Tests |
+| `RUNPOD_API_KEY` | Smoke Tests |
+
+Set these in **Settings → Secrets and variables → Actions** in the GitHub repository.
+
 ## Stack
 
 - Node.js >= 24 (native fetch, native TypeScript stripping, native SQLite, `--experimental-test-module-mocks`, `node:test`)

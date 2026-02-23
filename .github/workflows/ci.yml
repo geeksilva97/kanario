@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Create .env.test
+        run: |
+          cat <<EOF > .env.test
+          WP_URL=${{ secrets.WP_URL }}
+          WP_USERNAME=${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}
+          EOF
+      - run: npm run test:integration
+
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Create .env
+        run: |
+          cat <<EOF > .env
+          WP_URL=${{ secrets.WP_URL }}
+          WP_USERNAME=${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          RUNPOD_API_KEY=${{ secrets.RUNPOD_API_KEY }}
+          EOF
+      - run: ./test/smoke.sh
+      - name: Upload generated images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-output
+          path: output/
+          retention-days: 7
