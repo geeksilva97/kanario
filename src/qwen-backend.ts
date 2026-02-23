@@ -3,7 +3,7 @@ import { config } from "./config.ts";
 import { createHttpClient, type HttpClient } from "./http.ts";
 import { encodeMascot } from "./image-generator.ts";
 import type { ImageBackend } from "./image-backend.ts";
-import { ImageBackendError } from "./errors.ts";
+import { HttpError, ImageBackendError } from "./errors.ts";
 
 const POLL_INTERVAL_MS = 3_000;
 
@@ -19,7 +19,15 @@ export function createRunpodClient(): HttpClient {
 
 async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<any> {
   while (true) {
-    const res = await http.request(`/status/${jobId}`);
+    let res: Response;
+    try {
+      res = await http.request(`/status/${jobId}`);
+    } catch (err) {
+      if (HttpError.is(err)) {
+        throw ImageBackendError.runpodApiError(err.meta.status as number, err.meta.body as string);
+      }
+      throw err;
+    }
     const status = await res.json();
 
     if (status.status === "COMPLETED") {
@@ -59,10 +67,18 @@ export function createQwenBackend(http: HttpClient): ImageBackend {
       };
 
       console.log(`    Submitting job to RunPod Hub ...`);
-      const submitRes = await http.request("/run", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+      let submitRes: Response;
+      try {
+        submitRes = await http.request("/run", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+      } catch (err) {
+        if (HttpError.is(err)) {
+          throw ImageBackendError.runpodApiError(err.meta.status as number, err.meta.body as string);
+        }
+        throw err;
+      }
       const { id: jobId } = await submitRes.json();
 
       console.log(`    Job ${jobId} queued, polling for result ...`);
@@ -70,7 +86,15 @@ export function createQwenBackend(http: HttpClient): ImageBackend {
 
       const imageUrl = result.output.result;
       console.log(`    Downloading result image ...`);
-      const imageRes = await http.request(imageUrl);
+      let imageRes: Response;
+      try {
+        imageRes = await http.request(imageUrl);
+      } catch (err) {
+        if (HttpError.is(err)) {
+          throw ImageBackendError.downloadFailed(err.meta.status as number);
+        }
+        throw err;
+      }
       return Buffer.from(await imageRes.arrayBuffer());
     },
   };

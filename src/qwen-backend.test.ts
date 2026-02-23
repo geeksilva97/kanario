@@ -137,7 +137,7 @@ describe("QwenBackend", () => {
     );
   });
 
-  it("throws HttpError on API error during submit", async (t) => {
+  it("throws ImageBackendError on API error during submit", async (t) => {
     t.mock.method(console, "log", () => {});
 
     const http = mockRunpodClient(async (p, init) => {
@@ -148,14 +148,15 @@ describe("QwenBackend", () => {
     await assert.rejects(
       () => backend.generate({ prompt: "error test", seed: -1, wide: false }),
       (err: any) => {
-        assert.ok(HttpError.is(err));
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "runpod_api_error");
         assert.equal(err.meta.status, 500);
         return true;
       },
     );
   });
 
-  it("throws HttpError when image download fails", async (t) => {
+  it("throws ImageBackendError when image download fails", async (t) => {
     t.mock.method(console, "log", () => {});
 
     let callNum = 0;
@@ -180,7 +181,8 @@ describe("QwenBackend", () => {
     await assert.rejects(
       () => backend.generate({ prompt: "download fail", seed: -1, wide: false }),
       (err: any) => {
-        assert.ok(HttpError.is(err));
+        assert.ok(ImageBackendError.is(err));
+        assert.equal(err.type, "download_failed");
         assert.equal(err.meta.status, 404);
         return true;
       },
