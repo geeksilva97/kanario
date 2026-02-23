@@ -95,9 +95,13 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker southamerica-east1-docker.pkg.dev --quiet
       - name: Build and push image
         run: |
-          gcloud builds submit --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$SERVICE_NAME" --project "$PROJECT_ID"
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$SERVICE_NAME"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           REGION: southamerica-east1
