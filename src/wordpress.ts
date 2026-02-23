@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import type { HttpClient } from "./http.ts";
-import { WordPressError } from "./errors.ts";
+import { HttpError, WordPressError } from "./errors.ts";
 
 export interface WPPost {
   title: string;
@@ -37,7 +37,15 @@ async function fetchPostIdBySlug(
   http: HttpClient,
   slug: string,
 ): Promise<string> {
-  const response = await http.request(`/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`);
+  let response: Response;
+  try {
+    response = await http.request(`/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`);
+  } catch (err) {
+    if (HttpError.is(err)) {
+      throw WordPressError.slugLookupFailed(slug, err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+    }
+    throw err;
+  }
 
   const data = await response.json();
   if (!Array.isArray(data) || data.length === 0) {
@@ -74,7 +82,15 @@ export async function fetchDraft(
   http: HttpClient,
   postId: string,
 ): Promise<WPPost> {
-  const response = await http.request(`/posts/${postId}`);
+  let response: Response;
+  try {
+    response = await http.request(`/posts/${postId}`);
+  } catch (err) {
+    if (HttpError.is(err)) {
+      throw WordPressError.fetchFailed(postId, err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+    }
+    throw err;
+  }
 
   const data = await response.json();
 
@@ -92,14 +108,22 @@ export async function uploadMedia(
 ): Promise<number> {
   const body = fs.readFileSync(imagePath);
 
-  const response = await http.request("/media", {
-    method: "POST",
-    headers: {
-      "Content-Type": "image/png",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-    body,
-  });
+  let response: Response;
+  try {
+    response = await http.request("/media", {
+      method: "POST",
+      headers: {
+        "Content-Type": "image/png",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+      body,
+    });
+  } catch (err) {
+    if (HttpError.is(err)) {
+      throw WordPressError.uploadFailed(err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+    }
+    throw err;
+  }
 
   const data = await response.json();
   return data.id;
@@ -110,11 +134,18 @@ export async function setFeaturedImage(
   postId: string,
   mediaId: number,
 ): Promise<void> {
-  await http.request(`/posts/${postId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ featured_media: mediaId }),
-  });
+  try {
+    await http.request(`/posts/${postId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ featured_media: mediaId }),
+    });
+  } catch (err) {
+    if (HttpError.is(err)) {
+      throw WordPressError.setFeaturedFailed(err.meta.status as number, err.meta.statusText as string, err.meta.body as string);
+    }
+    throw err;
+  }
 }

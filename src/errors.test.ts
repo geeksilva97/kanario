@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { KanarioError, HttpError, WordPressError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
+import { KanarioError, HttpError, WordPressError, ImageBackendError, ConfigError, FileError, parseWpErrorCode } from "./errors.ts";
 
 describe("KanarioError", () => {
   it("sets type, message, and meta", () => {
@@ -64,11 +64,43 @@ describe("WordPressError", () => {
     assert.ok(!WordPressError.is(new Error("plain")));
   });
 
+  it(".fetchFailed() sets correct type and meta with wpCode", () => {
+    const body = JSON.stringify({ code: "rest_post_invalid_id", message: "Invalid post ID." });
+    const err = WordPressError.fetchFailed("123", 404, "Not Found", body);
+    assert.equal(err.type, "wp_fetch_failed");
+    assert.equal(err.message, "Failed to fetch post 123: 404 Not Found");
+    assert.deepEqual(err.meta, { postId: "123", status: 404, statusText: "Not Found", wpCode: "rest_post_invalid_id" });
+  });
+
+  it(".slugLookupFailed() sets correct type and meta with wpCode", () => {
+    const body = JSON.stringify({ code: "rest_forbidden_status", message: "Forbidden." });
+    const err = WordPressError.slugLookupFailed("my-post", 403, "Forbidden", body);
+    assert.equal(err.type, "wp_slug_lookup_failed");
+    assert.equal(err.message, 'Slug lookup failed for "my-post": 403 Forbidden');
+    assert.deepEqual(err.meta, { slug: "my-post", status: 403, statusText: "Forbidden", wpCode: "rest_forbidden_status" });
+  });
+
   it(".slugNotFound() sets correct type and meta", () => {
     const err = WordPressError.slugNotFound("my-post");
     assert.equal(err.type, "wp_slug_not_found");
     assert.equal(err.message, 'No post found with slug "my-post"');
     assert.deepEqual(err.meta, { slug: "my-post" });
+  });
+
+  it(".uploadFailed() sets correct type and meta with wpCode", () => {
+    const body = JSON.stringify({ code: "rest_upload_file_too_big", message: "File too large." });
+    const err = WordPressError.uploadFailed(413, "Payload Too Large", body);
+    assert.equal(err.type, "wp_upload_failed");
+    assert.equal(err.message, "Media upload failed: 413 Payload Too Large");
+    assert.deepEqual(err.meta, { status: 413, statusText: "Payload Too Large", wpCode: "rest_upload_file_too_big" });
+  });
+
+  it(".setFeaturedFailed() sets correct type and meta with wpCode", () => {
+    const body = JSON.stringify({ code: "rest_cannot_edit", message: "Cannot edit." });
+    const err = WordPressError.setFeaturedFailed(403, "Forbidden", body);
+    assert.equal(err.type, "wp_set_featured_failed");
+    assert.equal(err.message, "Setting featured image failed: 403 Forbidden");
+    assert.deepEqual(err.meta, { status: 403, statusText: "Forbidden", wpCode: "rest_cannot_edit" });
   });
 
   it(".unresolvableInput() sets correct type and meta", () => {
@@ -77,12 +109,54 @@ describe("WordPressError", () => {
     assert.equal(err.message, "Cannot resolve post from input: just-a-slug");
     assert.deepEqual(err.meta, { input: "just-a-slug" });
   });
+
+  it("sets wpCode to null for non-JSON body", () => {
+    const err = WordPressError.fetchFailed("123", 500, "Internal Server Error", "not json");
+    assert.equal(err.meta.wpCode, null);
+  });
+
+  it("sets wpCode to null for JSON without code field", () => {
+    const err = WordPressError.fetchFailed("123", 500, "Internal Server Error", JSON.stringify({ message: "error" }));
+    assert.equal(err.meta.wpCode, null);
+  });
+});
+
+describe("parseWpErrorCode", () => {
+  it("extracts code from valid WP JSON", () => {
+    assert.equal(parseWpErrorCode(JSON.stringify({ code: "rest_post_invalid_id", message: "Invalid." })), "rest_post_invalid_id");
+  });
+
+  it("returns null for non-JSON body", () => {
+    assert.equal(parseWpErrorCode("Not Found"), null);
+  });
+
+  it("returns null for JSON without code field", () => {
+    assert.equal(parseWpErrorCode(JSON.stringify({ message: "error" })), null);
+  });
+
+  it("returns null for JSON with non-string code", () => {
+    assert.equal(parseWpErrorCode(JSON.stringify({ code: 42 })), null);
+  });
 });
 
 describe("ImageBackendError", () => {
   it("is() detects ImageBackendError but not sibling classes", () => {
     assert.ok(ImageBackendError.is(ImageBackendError.noImageData()));
     assert.ok(!ImageBackendError.is(new WordPressError("t", "m")));
+  });
+
+  it(".runpodApiError() sets correct type and meta", () => {
+    const err = ImageBackendError.runpodApiError(500, "server error");
+    assert.equal(err.type, "runpod_api_error");
+    assert.equal(err.message, "RunPod API error: 500 — server error");
+    assert.deepEqual(err.meta, { status: 500, body: "server error" });
+  });
+
+  it(".downloadFailed() sets correct type and meta", () => {
+    const err = ImageBackendError.downloadFailed(404);
+    assert.equal(err.type, "download_failed");
+    assert.equal(err.message, "Image download failed: 404");
+    assert.deepEqual(err.meta, { status: 404 });
   });
 
   it(".runpodJobFailed() sets correct type and meta", () => {

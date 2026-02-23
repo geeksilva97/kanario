@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { pickWorkflow } from "./pick.ts";
 import type { HttpClient } from "../http.ts";
-import { FileError, HttpError } from "../errors.ts";
+import { FileError, HttpError, WordPressError } from "../errors.ts";
 
 const fakeHttp: HttpClient = {
   baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
@@ -63,23 +63,26 @@ describe("pickWorkflow", () => {
     assert.equal(result.mediaId, 42);
   });
 
-  it("throws HttpError when upload fails", async () => {
+  it("throws WordPressError when upload fails", async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-pick-test-"));
     tmpImage = path.join(tmpDir, "test.png");
     fs.writeFileSync(tmpImage, "fake-png");
 
+    const wpBody = JSON.stringify({ code: "rest_cannot_create", message: "Sorry, you are not allowed to upload media." });
     const http: HttpClient = {
       baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
       request: async (_p, init) => {
-        throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 500, "Internal Server Error", "Server Error");
+        throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 403, "Forbidden", wpBody);
       },
     };
 
     await assert.rejects(
       () => pickWorkflow({ wpHttp: http, postId: "123", imagePath: tmpImage }),
       (err: any) => {
-        assert.ok(HttpError.is(err));
-        assert.equal(err.meta.status, 500);
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_upload_failed");
+        assert.equal(err.meta.status, 403);
+        assert.equal(err.meta.wpCode, "rest_cannot_create");
         return true;
       },
     );

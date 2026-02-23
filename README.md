@@ -415,6 +415,6 @@ npm test              # unit tests — colocated *.test.ts files (no network, no
 - `sharp` for image processing (padding mascot to widescreen canvas)
 - `fastify` for the Discord bot HTTP server (Ed25519 signature verification via Node built-in `crypto.subtle`)
 - `HttpClient` abstraction for all HTTP calls (base URL binding, header merging, `HttpError` on non-ok responses)
-- Custom error hierarchy (`KanarioError` → `HttpError`, `WordPressError`, `ImageBackendError`, `ConfigError`, `FileError`) with structured metadata and actionable hints
+- Custom error hierarchy (`KanarioError` → `HttpError`, `WordPressError`, `ImageBackendError`, `ConfigError`, `FileError`) with structured metadata and actionable hints — `WordPressError` parses WP REST API error codes from response bodies for specific diagnostics
 - RunPod Hub serverless endpoint for Qwen Image Edit (default image backend)
 - Nano Banana (Gemini 2.5 Flash Image) via Vertex AI Express API (alternative image backend, reuses `GEMINI_API_KEY`)

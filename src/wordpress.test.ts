@@ -176,16 +176,20 @@ describe("fetchDraft", () => {
     assert.equal(calledPath, "/posts/123");
   });
 
-  it("throws HttpError on non-200 response", async () => {
+  it("throws WordPressError on non-200 response with wpCode", async () => {
+    const wpBody = JSON.stringify({ code: "rest_post_invalid_id", message: "Invalid post ID." });
     const http = mockHttpClient(async (_p, init) => {
-      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/999", 404, "Not Found", "Not Found");
+      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/999", 404, "Not Found", wpBody);
     });
 
     await assert.rejects(
       () => fetchDraft(http, "999"),
       (err: any) => {
-        assert.ok(HttpError.is(err));
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_fetch_failed");
         assert.equal(err.meta.status, 404);
+        assert.equal(err.meta.postId, "999");
+        assert.equal(err.meta.wpCode, "rest_post_invalid_id");
         return true;
       },
     );
@@ -224,16 +228,19 @@ describe("uploadMedia", () => {
     assert.equal(headers["Content-Disposition"], 'attachment; filename="cover.png"');
   });
 
-  it("throws HttpError on non-200 response", async () => {
+  it("throws WordPressError on non-200 response with wpCode", async () => {
+    const wpBody = JSON.stringify({ code: "rest_cannot_create", message: "Sorry, you are not allowed to upload media." });
     const http = mockHttpClient(async (_p, init) => {
-      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 500, "Internal Server Error", "Error");
+      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 403, "Forbidden", wpBody);
     });
 
     await assert.rejects(
       () => uploadMedia(http, tmpImage, "cover.png"),
       (err: any) => {
-        assert.ok(HttpError.is(err));
-        assert.equal(err.meta.status, 500);
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_upload_failed");
+        assert.equal(err.meta.status, 403);
+        assert.equal(err.meta.wpCode, "rest_cannot_create");
         return true;
       },
     );
@@ -258,16 +265,19 @@ describe("setFeaturedImage", () => {
     assert.deepEqual(JSON.parse(calledInit?.body as string), { featured_media: 42 });
   });
 
-  it("throws HttpError on non-200 response", async () => {
+  it("throws WordPressError on non-200 response with wpCode", async () => {
+    const wpBody = JSON.stringify({ code: "rest_cannot_edit", message: "Sorry, you are not allowed to edit this post." });
     const http = mockHttpClient(async (_p, init) => {
-      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/123", 403, "Forbidden", "Error");
+      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/123", 403, "Forbidden", wpBody);
     });
 
     await assert.rejects(
       () => setFeaturedImage(http, "123", 42),
       (err: any) => {
-        assert.ok(HttpError.is(err));
+        assert.ok(WordPressError.is(err));
+        assert.equal(err.type, "wp_set_featured_failed");
         assert.equal(err.meta.status, 403);
+        assert.equal(err.meta.wpCode, "rest_cannot_edit");
         return true;
       },
     );

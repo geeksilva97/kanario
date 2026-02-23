@@ -1,12 +1,35 @@
-import { KanarioError, HttpError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
+import { KanarioError, WordPressError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
+
+const WP_CODE_HINTS: Record<string, string> = {
+  rest_post_invalid_id: "The post ID doesn't exist or belongs to a different post type.",
+  rest_forbidden_context: "The WordPress user can't access this post. Check that the user has edit permissions.",
+  rest_post_incorrect_password: "The post is password-protected and the provided password is wrong.",
+  rest_cannot_create: "The WordPress user lacks the upload_files capability.",
+  rest_cannot_edit: "The WordPress user doesn't have permission to edit this post.",
+  rest_invalid_featured_media: "The media ID is invalid — the upload may have failed or the file was deleted.",
+  rest_upload_no_data: "The upload body was empty — the image file may be corrupt or unreadable.",
+  rest_upload_sideload_error: "WordPress rejected the file — check that the file type is allowed and the server has disk space.",
+  rest_upload_unknown_error: "WordPress rejected the file — check that the file type is allowed and the server has disk space.",
+  rest_upload_file_too_big: "The image exceeds the WordPress upload size limit.",
+  rest_upload_limited_space: "The WordPress site has run out of upload space.",
+  rest_upload_hash_mismatch: "Content hash mismatch — try uploading again.",
+  rest_forbidden_status: "The WordPress user can't query posts with this status. Check that the user has edit_posts capability.",
+  db_update_error: "WordPress database write failed — contact the site admin.",
+};
+
+const WP_STATUS_HINTS: Record<number, string> = {
+  401: "Check WP_USERNAME and WP_APP_PASSWORD — the credentials may be wrong or expired.",
+  403: "The WordPress user lacks the required permissions for this action.",
+  404: "The post ID may be wrong, or the post hasn't been saved as a draft yet.",
+  500: "WordPress server error — contact the site admin.",
+};
 
 function getHint(err: KanarioError): string | null {
-  if (err instanceof HttpError) {
-    const { url, status } = err.meta as { url: string; status: number };
-    if (String(url).includes("/wp-json/")) {
-      if (status === 401 || status === 403) return "Check WP_USERNAME and WP_APP_PASSWORD — the credentials may be wrong or expired.";
-      if (status === 404) return "The post ID may be wrong, or the post hasn't been saved as a draft yet.";
-    }
+  if (err instanceof WordPressError) {
+    const wpCode = err.meta.wpCode as string | null | undefined;
+    if (wpCode && WP_CODE_HINTS[wpCode]) return WP_CODE_HINTS[wpCode];
+    const status = err.meta.status as number | undefined;
+    if (status && WP_STATUS_HINTS[status]) return WP_STATUS_HINTS[status];
     return null;
   }
 
