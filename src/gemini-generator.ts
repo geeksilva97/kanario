@@ -1,11 +1,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { config } from "./config.ts";
 import {
-  type ImagePrompt,
   type PromptResult,
-  buildFullPrompt,
   SYSTEM_PROMPT,
+  mapRawPrompts,
 } from "./prompt-generator.ts";
+import {
+  SCHEMA_DESCRIPTIONS,
+  MASCOT_CHOICES,
+  BACKGROUND_CHOICES,
+  buildUserMessage,
+  sanitizeJsonResponse,
+  type RawPrompt,
+} from "./prompt-schema.ts";
 import type { WPPost } from "./wordpress.ts";
 
 const promptSchema = {
@@ -18,24 +25,21 @@ const promptSchema = {
         properties: {
           scene: {
             type: Type.STRING,
-            description:
-              "Short label for the scene (2-5 words, e.g. 'mascot and robot at desk')",
+            description: SCHEMA_DESCRIPTIONS.scene,
           },
           mascot: {
             type: Type.STRING,
-            enum: ["miner", "hat", "none"],
-            description:
-              "Which mascot to use: 'miner' (rugged), 'hat' (intellectual), or 'none' (scene-only, no character)",
+            enum: [...MASCOT_CHOICES],
+            description: SCHEMA_DESCRIPTIONS.mascot,
           },
           background: {
             type: Type.STRING,
-            enum: ["white", "cream", "mint", "sky", "slate", "forest", "navy", "plum"],
-            description: "Background color that sets the mood for the scene",
+            enum: [...BACKGROUND_CHOICES],
+            description: SCHEMA_DESCRIPTIONS.background,
           },
           scene_description: {
             type: Type.STRING,
-            description:
-              "2-3 sentences (under 60 words). When mascot is 'miner' or 'hat', place the mascot and props in a scene with camera-relative depth using 'the mascot from the reference image'. Use 'a cute round-bodied bot buddy with big eyes and a small antenna' for secondary characters (never 'robot'). When mascot is 'none', start with 'Ignore the reference image.' then describe only the scene and props — no characters.",
+            description: SCHEMA_DESCRIPTIONS.scene_description,
           },
         },
         required: ["scene", "mascot", "background", "scene_description"],
@@ -51,17 +55,9 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
     apiKey: config.geminiApiKey,
   });
 
-  const userMessage = `Generate thumbnail prompts for this blog post.
-
-## Title (derive your core metaphor from this)
-${post.title}
-
-## Key points (summarized from the full article)
-${post.summary ?? post.content.slice(0, 4000)}${hint ? `\n\nCreative direction from the author: ${hint}` : ""}`;
-
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: userMessage,
+    contents: buildUserMessage(post, hint),
     config: {
       systemInstruction: SYSTEM_PROMPT,
       responseMimeType: "application/json",
@@ -69,19 +65,9 @@ ${post.summary ?? post.content.slice(0, 4000)}${hint ? `\n\nCreative direction f
     },
   });
 
-  const raw = JSON.parse(response.text!) as {
-    prompts: Array<{
-      scene: string;
-      mascot: string;
-      background: string;
-      scene_description: string;
-    }>;
+  const raw = JSON.parse(sanitizeJsonResponse(response.text!)) as {
+    prompts: RawPrompt[];
   };
 
-  return {
-    prompts: raw.prompts.map((p) => ({
-      ...p,
-      full_prompt: buildFullPrompt(p.scene_description, p.background),
-    })),
-  };
+  return { prompts: mapRawPrompts(raw) };
 }

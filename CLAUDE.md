@@ -49,7 +49,7 @@ src/
 ├── http.ts                   # HttpClient interface + createHttpClient factory (base URL binding, header merging, ok-check)
 ├── store.ts                  # SQLite-backed credential store with AES-256-GCM encryption (node:sqlite)
 ├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml (all take HttpClient)
-├── prompt-generator.ts       # Claude prompt generation, shared SYSTEM_PROMPT + buildFullPrompt
+├── prompt-generator.ts       # Claude prompt generation, shared schema data (enums, descriptions, user message, response mapping)
 ├── gemini-generator.ts       # Gemini prompt generation via @google/genai (Vertex AI Express)
 ├── summarizer.ts             # Pre-prompt summarization: extracts key points via LLM (Gemini or Claude)
 ├── image-backend.ts          # ImageBackend interface + ImageModel type
@@ -100,7 +100,7 @@ src/
 - **Qwen** needs widescreen padding (output matches input dimensions) via `encodeMascot()`, mascot scaled to 1/3 canvas width. **Nano Banana** handles aspect ratio via API config — no padding needed, mascot sent as raw base64.
 - **Nano Banana** runs with concurrency 1 and exponential backoff retry (5s initial, up to 6 retries) to handle Vertex AI rate limits.
 - **Post summarization** — before prompt generation, the full post content is summarized via a fast LLM (`gemini-2.5-flash` or `claude-haiku-4-5-20251001`, matching the `--model` flag). The summary replaces raw content in the user message sent to the prompt generator.
-- **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT` and `buildFullPrompt` from `prompt-generator.ts`. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
+- **Prompt generation** — both Gemini and Claude generators share `SYSTEM_PROMPT`, `buildFullPrompt`, enum arrays (`MASCOT_CHOICES`, `BACKGROUND_CHOICES`), field descriptions (`SCHEMA_DESCRIPTIONS`), user message builder (`buildUserMessage`), and response mapping (`mapRawPrompts`) from `prompt-generator.ts`. Only the SDK-specific schema wrappers differ. Output schema: `{ scene, mascot, background, scene_description, full_prompt }`.
 - **Two mascots + none**: `miner` (mascot3d.png), `hat` (mascot-hat.png), or `none` (no mascot) — the LLM picks per prompt.
 - **Secondary characters** — use "cute round-bodied bot buddy" (never "robot" — Qwen confuses it with the mascot). Seed is `-1` (Qwen picks random).
 - **Custom error classes** — all errors use `KanarioError` subclasses with `type` (machine-readable), `meta` (structured context), and static factory methods. `HttpError` handles all HTTP failures (thrown by `HttpClient` on non-ok responses). Services catch `HttpError` and re-throw as domain-specific errors: `WordPressError` (fetch failed, slug lookup failed, upload failed, set featured failed, slug not found, unresolvable input), `ImageBackendError` (RunPod API error, download failed, job failed, no image data, retries exhausted). Also `ConfigError`, `FileError`. Catch sites use `formatError(err)` from `error-reporter.ts` which appends actionable hints. `WordPressError` HTTP-wrapping factories accept the response `body` and store `wpCode` (parsed from WP REST API JSON `code` field via `parseWpErrorCode()`) in meta. `error-reporter.ts` dispatches on `wpCode` first (e.g. `rest_post_invalid_id`, `rest_cannot_edit`, `rest_upload_file_too_big`), then falls back to `status` (401/403/404/500). Each class has a static `is()` type guard for dispatch.
