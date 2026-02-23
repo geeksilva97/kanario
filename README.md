@@ -410,7 +410,7 @@ npm test              # unit tests — colocated *.test.ts files (no network, no
 
 ## Stack
 
-- Node.js >= 22 (native fetch, `--experimental-strip-types`, `--experimental-sqlite`, `--experimental-test-module-mocks`, `node:test`)
+- Node.js >= 24 (native fetch, native TypeScript stripping, native SQLite, `--experimental-test-module-mocks`, `node:test`)
 - Two LLM SDKs: `@google/genai` (Gemini via Vertex AI), `@anthropic-ai/sdk` (Claude)
 - `sharp` for image processing (padding mascot to widescreen canvas)
 - `fastify` for the Discord bot HTTP server (Ed25519 signature verification via Node built-in `crypto.subtle`)

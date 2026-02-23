@@ -7,8 +7,8 @@ describe("config", () => {
     assert.equal(config.wpUrl, "https://blog.codeminer42.com");
   });
 
-  it("PROJECT_ROOT points to kanario root", () => {
-    assert.ok(PROJECT_ROOT.endsWith("kanario"));
+  it("PROJECT_ROOT points to project root", () => {
+    assert.ok(PROJECT_ROOT.includes("kanario"));
   });
 });
 

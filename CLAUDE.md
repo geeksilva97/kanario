@@ -57,7 +57,7 @@ src/
 ├── qwen-backend.ts           # Qwen Image Edit on RunPod Hub (async submit → poll → download), createRunpodClient
 ├── nano-banana-backend.ts    # Gemini 2.5 Flash Image on Vertex AI (synchronous, returns base64)
 ├── types/
-│   └── sqlite.d.ts           # Type declarations for node:sqlite (experimental)
+│   └── sqlite.d.ts           # Type declarations for node:sqlite
 ├── commands/
 │   ├── generate.ts           # CLI generate command handler
 │   ├── improve.ts            # CLI improve command handler
@@ -77,7 +77,7 @@ src/
 
 ## Code conventions
 
-- **TypeScript with `--experimental-strip-types`** — no build step, Node runs `.ts` directly. Use `.ts` extensions in all imports. Also uses `--experimental-sqlite` for `node:sqlite`.
+- **TypeScript with native stripping** — no build step, Node runs `.ts` directly. Use `.ts` extensions in all imports. Also uses native `node:sqlite`.
 - **`verbatimModuleSyntax`** — use `import type` for type-only imports.
 - **Node.js built-in test runner** (`node:test` + `node:assert/strict`) — no Jest/Vitest.
 - **ESM only** (`"type": "module"` in package.json).
@@ -91,7 +91,7 @@ src/
 - **Per-user WordPress credentials** — Discord bot users register their own WP credentials via `/register`. CLI uses env vars via `credentialsFromEnv()`. Callers create a WP client with `createWpClient(creds)` and pass it to WP functions.
 - **`/register` flow** — user DMs the bot with `/register wp_url username app_password`. The bot calls `GET /wp-json/wp/v2/users/me` with those credentials to validate. On success, credentials are saved to SQLite (app password encrypted with AES-256-GCM). Rejected in guild channels for security (password visible to others). `/generate` and `/pick` require registration — they load credentials from SQLite by Discord user ID.
 - **Discord credential commands** — `/register` (DMs only, validates + stores), `/unregister` (deletes stored credentials), `/whoami` (shows URL + username, no password), `/help` (explains how the bot works). All ephemeral (only visible to invoker). `/help` returns an immediate response; all others use deferred responses.
-- **Credential storage** — `node:sqlite` (experimental, `--experimental-sqlite` flag) with SQLite file at `/app/data/credentials.db` (production, GCS FUSE mount) or `./data/credentials.db` (local dev). Encryption key from `CREDENTIAL_ENCRYPTION_KEY` env var; no-op if unset.
+- **Credential storage** — `node:sqlite` with SQLite file at `/app/data/credentials.db` (production, GCS FUSE mount) or `./data/credentials.db` (local dev). Encryption key from `CREDENTIAL_ENCRYPTION_KEY` env var; no-op if unset.
 - **All Discord commands use deferred responses** — Discord requires a response within 3s. All commands return a deferred message immediately and edit it after async work completes. Credential commands use ephemeral flag. `/register` in a guild channel is the only exception — rejected immediately with a security warning.
 - **Discord command registration is separate from deploy** — `deploy.sh` only deploys the server. When slash command definitions change (add/remove/rename commands or options in `COMMAND_DEFINITIONS`), you must also run `npm run discord:register` to push the changes to Discord's API.
 - **Cloud Scheduler keep-alive** — `deploy.sh` creates a Cloud Scheduler job (`kanario-keep-alive`) that pings `GET /health` every 5 minutes to prevent cold starts (which exceed Discord's 3s deadline). Uses `update || create` pattern for idempotency.
