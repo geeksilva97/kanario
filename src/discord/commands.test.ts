@@ -45,7 +45,7 @@ function makeMockDeps(): CommandDeps & { _calls: Record<string, unknown[][]> } {
         outputDir: "/tmp/output",
       })),
       improve: track("workflows.improve", async () => ({
-        imagePaths: ["/tmp/prompt-6.png", "/tmp/prompt-7.png"],
+        imagePaths: ["/tmp/prompt-6.png"],
         outputDir: "/tmp/output",
       })),
       pick: track("workflows.pick", async () => ({ mediaId: 42 })),

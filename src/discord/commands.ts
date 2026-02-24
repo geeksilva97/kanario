@@ -327,7 +327,9 @@ export function makeCommandHandler(deps: CommandDeps) {
         onProgress,
       );
 
-      const content = `${mention} Improved image with: "${prompt}"\n\nGenerated ${result.imagePaths.length} variants:`;
+      const filename = result.imagePaths[0].split("/").pop()!;
+      const imageNumber = filename.match(/^prompt-(\d+)\.png$/)?.[1] ?? "?";
+      const content = `${mention} Improved image → **prompt-${imageNumber}** | Prompt: "${prompt}"`;
 
       const files = result.imagePaths.map((p) => ({
         name: p.split("/").pop()!,

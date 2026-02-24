@@ -58,31 +58,22 @@ export async function improveWorkflow(
 
   // Find next available prompt number
   const startNumber = nextPromptNumber(outputDir);
-  log(`[1/2] Generating 2 improved variants from ${path.basename(sourceImagePath)} ...`);
+  log(`Generating improved image from ${path.basename(sourceImagePath)} ...`);
   log(`  Prompt: "${prompt}"`);
-  log(`  Starting from prompt-${startNumber}.png`);
+  log(`  Output: prompt-${startNumber}.png`);
 
-  // Generate 2 variants
-  const jobs = [0, 1].map((i) => ({
+  const job = {
     prompt,
     mascotPath: sourceImagePath,
     outputDir,
-    filename: `prompt-${startNumber + i}.png`,
+    filename: `prompt-${startNumber}.png`,
     seed: -1,
     wide: false,
-  }));
+  };
 
-  const concurrency = backend.maxConcurrency ?? jobs.length;
-  const imagePaths: string[] = [];
-  for (let i = 0; i < jobs.length; i += concurrency) {
-    const batch = jobs.slice(i, i + concurrency);
-    const results = await Promise.all(
-      batch.map((job) => generateSingleImage(job, backend)),
-    );
-    imagePaths.push(...results);
-  }
+  const imagePath = await generateSingleImage(job, backend);
 
-  log(`[2/2] Done! Generated ${imagePaths.length} images.`);
+  log(`Done! Generated prompt-${startNumber}.png`);
 
-  return { imagePaths, outputDir };
+  return { imagePaths: [imagePath], outputDir };
 }

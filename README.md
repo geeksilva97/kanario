@@ -90,7 +90,7 @@ Examples:
 ./kanario improve <post-id> <image> --prompt "your instructions"
 ```
 
-Iterates on an existing generated image. The source image is sent as-is to the image backend with your prompt (no style template wrapping). Generates 2 new variants with the next available numbers (e.g. `prompt-6.png`, `prompt-7.png`).
+Iterates on an existing generated image. The source image is sent as-is to the image backend with your prompt (no style template wrapping). Generates 1 image with the next available number (e.g. `prompt-6.png`). Run `/improve` again to keep iterating.
 
 `<image>` accepts a shorthand like `2` (resolves to `output/<post-id>/prompt-2.png`) or a full file path.
 
