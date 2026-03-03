@@ -5,7 +5,7 @@ import { credentialsFromEnv, createWpClient } from "../src/credentials.ts";
 
 // Known post IDs on blog.codeminer42.com
 const PUBLISHED_POST_ID = "12518";
-const DRAFT_POST_ID = "12487";
+const DRAFT_POST_ID = "2402";
 const NONEXISTENT_POST_ID = "999999";
 
 const creds = credentialsFromEnv();
