@@ -50,15 +50,6 @@ export const COMMAND_DEFINITIONS = [
         ],
       },
       {
-        name: "image_model",
-        description: "Image generation backend",
-        type: 3, // STRING
-        choices: [
-          { name: "Qwen on RunPod (default)", value: "qwen" },
-          { name: "Nano Banana (Vertex AI)", value: "nano-banana" },
-        ],
-      },
-      {
         name: "hint",
         description: "Guide the visual metaphor",
         type: 3, // STRING
@@ -104,15 +95,6 @@ export const COMMAND_DEFINITIONS = [
         description: "Improvement instructions (e.g. \"make the background darker\")",
         type: 3, // STRING
         required: true,
-      },
-      {
-        name: "image_model",
-        description: "Image generation backend",
-        type: 3, // STRING
-        choices: [
-          { name: "Qwen on RunPod (default)", value: "qwen" },
-          { name: "Nano Banana (Vertex AI)", value: "nano-banana" },
-        ],
       },
     ],
   },
@@ -168,8 +150,8 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 \`/register\` — Save your WordPress credentials (DMs only)
 \`/unregister\` — Remove your stored credentials
 \`/whoami\` — Check your registered credentials
-\`/generate post_id [model] [image_model] [hint]\` — Generate 5 thumbnail options
-\`/improve post_id image prompt [image_model]\` — Iterate on an existing image
+\`/generate post_id [model] [hint]\` — Generate 5 thumbnail options
+\`/improve post_id image prompt\` — Iterate on an existing image
 \`/pick post_id image\` — Upload an image and set it as featured
 \`/help\` — Show this message
 
@@ -177,7 +159,6 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 - \`post_id\` accepts a numeric ID, a wp-admin URL, or a published post URL
 - Use \`--hint\` to guide the visual metaphor (e.g. "two models competing")
 - Use \`/improve\` to tweak a generated image — pass the image number from \`/generate\` output (or a URL)
-- Image models: **Qwen** (default, RunPod) or **Nano Banana** (Vertex AI)
 - \`/generate\` and \`/improve\` show live progress updates while images are being generated`;
 
 function getOptionValue(interaction: DiscordInteraction, name: string): string | undefined {
@@ -211,7 +192,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     const rawPostId = getOptionValue(interaction, "post_id") || "";
     // Values are constrained by Discord slash command choices in COMMAND_DEFINITIONS
     const model = (getOptionValue(interaction, "model") || "gemini") as "gemini" | "claude";
-    const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
+    const imageModel = "qwen" as const;
     const hint = getOptionValue(interaction, "hint");
 
     const creds = credentialStore.load(userId);
@@ -297,8 +278,7 @@ export function makeCommandHandler(deps: CommandDeps) {
     const rawPostId = getOptionValue(interaction, "post_id") || "";
     const imageArg = getOptionValue(interaction, "image") || "";
     const prompt = getOptionValue(interaction, "prompt") || "";
-    // Value is constrained by Discord slash command choices in COMMAND_DEFINITIONS
-    const imageModel = (getOptionValue(interaction, "image_model") || "qwen") as "qwen" | "nano-banana";
+    const imageModel = "qwen" as const;
 
     let downloaded: { path: string; cleanup: () => void } | undefined;
 

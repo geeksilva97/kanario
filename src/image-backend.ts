@@ -8,4 +8,4 @@ export interface ImageBackend {
   maxConcurrency?: number;
 }
 
-export type ImageModel = "qwen" | "nano-banana";
+export type ImageModel = "qwen";

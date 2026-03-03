@@ -88,20 +88,5 @@ describe("improveWorkflow", () => {
     );
   });
 
-  it("throws ConfigError when GEMINI_API_KEY is missing for nano-banana", async () => {
-    await assert.rejects(
-      () => improveWorkflow({
-        sourceImagePath: tmpImage,
-        prompt: "make it better",
-        imageModel: "nano-banana",
-        outputDir: tmpDir,
-      }),
-      (err: unknown) => {
-        if (!ConfigError.is(err)) return assert.fail("Expected ConfigError");
-        assert.equal(err.type, "missing_env_vars");
-        assert.match(err.message, /GEMINI_API_KEY/);
-        return true;
-      },
-    );
-  });
 });
+

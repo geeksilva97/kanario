@@ -4,7 +4,6 @@ import sharp from "sharp";
 import type { HttpClient } from "./http.ts";
 import type { ImageBackend, ImageModel } from "./image-backend.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
-import { createNanoBananaBackend } from "./nano-banana-backend.ts";
 import { ImageBackendError } from "./errors.ts";
 
 export interface GenerateImageOptions {
@@ -59,7 +58,6 @@ export function createImageBackend(model: ImageModel, runpodHttp?: HttpClient): 
       if (!runpodHttp) throw new Error("runpodHttp is required for qwen backend");
       return createQwenBackend(runpodHttp);
     }
-    case "nano-banana": return createNanoBananaBackend();
     default: throw ImageBackendError.unknownModel(model);
   }
 }

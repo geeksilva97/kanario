@@ -176,7 +176,7 @@ export class ImageBackendError extends KanarioError<ImageBackendErrorMeta> {
   static unknownModel(model: string) {
     return new ImageBackendError(
       "unknown_image_model",
-      `Unknown image model "${model}". Choose "qwen" or "nano-banana".`,
+      `Unknown image model "${model}". Choose "qwen".`,
       { model },
     );
   }

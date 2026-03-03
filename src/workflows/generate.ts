@@ -49,13 +49,12 @@ export async function generateWorkflow(
   const missing: string[] = [];
   if (model === "claude" && !config.anthropicApiKey) missing.push("ANTHROPIC_API_KEY");
   if (model === "gemini" && !config.geminiApiKey) missing.push("GEMINI_API_KEY");
-  if (imageModel === "nano-banana" && !config.geminiApiKey) missing.push("GEMINI_API_KEY");
   if (imageModel === "qwen" && !config.runpodApiKey) missing.push("RUNPOD_API_KEY");
   if (missing.length > 0) {
     throw ConfigError.missingEnvVars(missing);
   }
 
-  const runpodHttp = imageModel === "qwen" ? createRunpodClient() : undefined;
+  const runpodHttp = createRunpodClient();
   const backend = createImageBackend(imageModel, runpodHttp);
 
   const generatePrompts = model === "gemini" ? geminiGeneratePrompts : claudeGeneratePrompts;
@@ -82,8 +81,7 @@ export async function generateWorkflow(
   }
 
   // Step 4: Generate images
-  const imageLabel = imageModel === "nano-banana" ? "Nano Banana" : "Qwen Image Edit";
-  log(`[4/5] Generating images via ${imageLabel} (${wide ? "wide" : "square"}) ...`);
+  log(`[4/5] Generating images via Qwen Image Edit (${wide ? "wide" : "square"}) ...`);
   const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, postId);
 
   const jobs = result.prompts.map((prompt, i) => {

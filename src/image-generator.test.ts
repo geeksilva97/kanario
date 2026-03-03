@@ -6,7 +6,6 @@ import os from "node:os";
 import sharp from "sharp";
 import { createImageBackend, padToWidescreen, encodeMascot, generateSingleImage, generateImages } from "./image-generator.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
-import { createNanoBananaBackend } from "./nano-banana-backend.ts";
 import type { HttpClient } from "./http.ts";
 import type { ImageBackend } from "./image-backend.ts";
 import { ImageBackendError } from "./errors.ts";
@@ -22,18 +21,8 @@ describe("ImageBackend", () => {
     assert.equal(typeof backend.generate, "function");
   });
 
-  it("createNanoBananaBackend returns an object with generate method", () => {
-    const backend = createNanoBananaBackend();
-    assert.equal(typeof backend.generate, "function");
-  });
-
   it('createImageBackend("qwen") returns a backend', () => {
     const backend = createImageBackend("qwen", fakeRunpodHttp);
-    assert.equal(typeof backend.generate, "function");
-  });
-
-  it('createImageBackend("nano-banana") returns a backend', () => {
-    const backend = createImageBackend("nano-banana");
     assert.equal(typeof backend.generate, "function");
   });
 

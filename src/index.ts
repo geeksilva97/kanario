@@ -22,7 +22,7 @@ if (values.help || positionals.length === 0) {
   ./kanario improve <post-id> <image> --prompt "..."  Iterate on an existing image
 
 Fetches a WordPress draft, generates thumbnail prompts via an LLM,
-and produces cover images via an image backend (Qwen on RunPod or Nano Banana on Vertex AI).
+and produces cover images via Qwen Image Edit on RunPod.
 
 Arguments:
   post-id-or-url  WordPress post ID or wp-admin edit URL
@@ -30,7 +30,7 @@ Arguments:
 
 Options:
   --model        LLM for prompt generation: "gemini" (default) or "claude"
-  --image-model  Image backend: "qwen" (default) or "nano-banana"
+  --image-model  Image backend: "qwen" (default)
   -o, --output   Custom output directory (default: output/<post-id>)
   --no-wide      Disable 16:9 padding, output matches mascot aspect ratio (square)
   --hint         Guide the visual metaphor (e.g. "two models competing side by side")
@@ -41,7 +41,6 @@ Examples:
   ./kanario 12487
   ./kanario 12487 --no-wide
   ./kanario 12487 --model claude
-  ./kanario 12487 --image-model nano-banana
   ./kanario 12487 --hint "versus scene, two robots facing off"
   ./kanario pick 12487 2
   ./kanario pick 12487 /path/to/custom.png

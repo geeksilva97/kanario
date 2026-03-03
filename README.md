@@ -4,7 +4,7 @@
 
 # Kanario
 
-Blog thumbnail generator. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via an image backend (Qwen Image Edit on RunPod or Nano Banana on Vertex AI).
+Blog thumbnail generator. Reads a WordPress draft, generates image prompts via an LLM (Gemini or Claude), then produces cover images via Qwen Image Edit on RunPod.
 
 Works as a **CLI** (`./kanario`) or a **Discord bot** (`/generate`, `/improve`, `/pick`). Both interfaces use the same underlying workflows. The Discord bot's command handler uses dependency injection (factory + closure pattern) for testability.
 
@@ -13,7 +13,7 @@ Given a post ID (or URL), the CLI:
 1. Fetches the draft from WordPress REST API
 2. Summarizes the full post content via a fast LLM (Gemini Flash or Claude Haiku) to extract key points
 3. Sends the summary to an LLM (Gemini by default, or Claude), which generates scene descriptions — the LLM decides per scene whether a mascot character fits or if a scene-only diorama works better
-4. Submits image jobs (1 per prompt) to the chosen image backend (Qwen on RunPod or Nano Banana on Vertex AI)
+4. Submits image jobs (1 per prompt) to Qwen Image Edit on RunPod
 5. Saves everything to `output/<post-id>/`
 
 Once you've picked a favorite, the `pick` subcommand uploads it to WordPress and sets it as the post's featured image.
@@ -32,9 +32,9 @@ cp .env.example .env  # fill in credentials
 | `WP_URL` | WordPress site URL (default: `https://blog.codeminer42.com`) — CLI only |
 | `WP_USERNAME` | WordPress username — CLI only |
 | `WP_APP_PASSWORD` | WordPress application password ([how to get one](#wordpress-application-password)) — CLI only |
-| `GEMINI_API_KEY` | Google Vertex AI API key (default model + Nano Banana image backend — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
+| `GEMINI_API_KEY` | Google Vertex AI API key (default LLM model — [get one from Vertex AI Studio](https://console.cloud.google.com/vertex-ai)) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (only needed with `--model claude`) |
-| `RUNPOD_API_KEY` | RunPod API key (only needed with `--image-model qwen`, the default — from [runpod.io](https://www.runpod.io/) account settings) |
+| `RUNPOD_API_KEY` | RunPod API key — from [runpod.io](https://www.runpod.io/) account settings |
 | `DISCORD_TOKEN` | Discord bot token (only needed for Discord bot) |
 | `DISCORD_PUBLIC_KEY` | Discord application public key (only needed for Discord bot) |
 | `DISCORD_APPLICATION_ID` | Discord application ID (only needed for Discord bot) |
@@ -59,7 +59,7 @@ Your user must have **Editor** or **Administrator** role to access draft posts v
 ### Generate thumbnails
 
 ```bash
-./kanario <post-id-or-url> [--model gemini|claude] [--image-model qwen|nano-banana] [--no-wide] [--hint <text>]
+./kanario <post-id-or-url> [--model gemini|claude] [--no-wide] [--hint <text>]
 ```
 
 Options:
@@ -67,7 +67,6 @@ Options:
 | Flag | Description |
 |---|---|
 | `--model` | LLM for prompt generation: `gemini` (default) or `claude` |
-| `--image-model` | Image generation backend: `qwen` (default, RunPod) or `nano-banana` (Vertex AI) |
 | `-o, --output` | Custom output directory (default: `output/<post-id>`) |
 | `--no-wide` | Disable 16:9 padding, output matches mascot aspect ratio (square) |
 | `--hint` | Guide the visual metaphor (e.g. `"two models competing side by side"`) — also useful to force a mascot when the LLM omits one |
@@ -79,7 +78,6 @@ Examples:
 ./kanario 12487
 ./kanario 12487 --no-wide
 ./kanario 12487 --model claude
-./kanario 12487 --image-model nano-banana
 ./kanario "https://blog.codeminer42.com/wp-admin/post.php?post=12487&action=edit"
 ./kanario "https://blog.codeminer42.com/some-post-slug/"
 ```
@@ -183,8 +181,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `/register wp_url username app_password` | Register your WordPress credentials (DMs only) |
 | `/unregister` | Remove your stored WordPress credentials |
 | `/whoami` | Show your registered URL and username (no password) |
-| `/generate post_id [model] [image_model] [hint]` | Generate 5 thumbnail images for a WordPress post (requires registration) |
-| `/improve post_id image prompt [image_model]` | Iterate on a generated image with a new prompt |
+| `/generate post_id [model] [hint]` | Generate 5 thumbnail images for a WordPress post (requires registration) |
+| `/improve post_id image prompt` | Iterate on a generated image with a new prompt |
 | `/pick post_id image` | Upload an image and set it as the post's featured image (requires registration) |
 
 All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate`, `/improve`, and `/pick` results are visible to the channel.
@@ -452,5 +450,4 @@ Set these in **Settings → Secrets and variables → Actions** in the GitHub re
 - `fastify` for the Discord bot HTTP server (Ed25519 signature verification via Node built-in `crypto.subtle`)
 - `HttpClient` abstraction for all HTTP calls (base URL binding, header merging, `HttpError` on non-ok responses)
 - Custom error hierarchy (`KanarioError` → `HttpError`, `WordPressError`, `ImageBackendError`, `ConfigError`, `FileError`) with structured metadata and actionable hints — `WordPressError` parses WP REST API error codes from response bodies for specific diagnostics
-- RunPod Hub serverless endpoint for Qwen Image Edit (default image backend)
-- Nano Banana (Gemini 2.5 Flash Image) via Vertex AI Express API (alternative image backend, reuses `GEMINI_API_KEY`)
+- RunPod Hub serverless endpoint for Qwen Image Edit (image backend)

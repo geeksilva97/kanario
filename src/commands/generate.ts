@@ -27,8 +27,8 @@ export async function generate(
     process.exit(1);
   }
 
-  if (imageModelRaw !== "qwen" && imageModelRaw !== "nano-banana") {
-    console.error(`Unknown image model "${imageModelRaw}". Choose "qwen" or "nano-banana".`);
+  if (imageModelRaw !== "qwen") {
+    console.error(`Unknown image model "${imageModelRaw}". Choose "qwen".`);
     process.exit(1);
   }
   const imageModel: ImageModel = imageModelRaw;

@@ -48,12 +48,11 @@ export async function improveWorkflow(
   // Validate required env vars
   const missing: string[] = [];
   if (imageModel === "qwen" && !config.runpodApiKey) missing.push("RUNPOD_API_KEY");
-  if (imageModel === "nano-banana" && !config.geminiApiKey) missing.push("GEMINI_API_KEY");
   if (missing.length > 0) {
     throw ConfigError.missingEnvVars(missing);
   }
 
-  const runpodHttp = imageModel === "qwen" ? createRunpodClient() : undefined;
+  const runpodHttp = createRunpodClient();
   const backend = createImageBackend(imageModel, runpodHttp);
 
   // Find next available prompt number

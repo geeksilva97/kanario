@@ -24,8 +24,8 @@ export async function improve(
   const imageModelRaw = values["image-model"] || "qwen";
   const outputDir = path.join(OUTPUT_DIR, postId);
 
-  if (imageModelRaw !== "qwen" && imageModelRaw !== "nano-banana") {
-    console.error(`Unknown image model "${imageModelRaw}". Choose "qwen" or "nano-banana".`);
+  if (imageModelRaw !== "qwen") {
+    console.error(`Unknown image model "${imageModelRaw}". Choose "qwen".`);
     process.exit(1);
   }
   const imageModel: ImageModel = imageModelRaw;
