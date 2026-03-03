@@ -4,7 +4,7 @@ import { OUTPUT_DIR } from "../config.ts";
 import { credentialsFromEnv, createWpClient } from "../credentials.ts";
 import { fetchDraft, resolvePostId } from "../wordpress.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
-import { formatError } from "../error-reporter.ts";
+import { formatError } from "../errors/error-reporter.ts";
 
 export function resolveImagePath(postId: string, imageArg: string): string {
   if (/^\d+[a-z]?$/.test(imageArg)) {

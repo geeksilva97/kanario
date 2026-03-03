@@ -3,7 +3,7 @@ import { OUTPUT_DIR } from "../config.ts";
 import { resolveImagePath } from "./pick.ts";
 import { improveWorkflow } from "../workflows/improve.ts";
 import type { ImageModel } from "../image-backend.ts";
-import { formatError } from "../error-reporter.ts";
+import { formatError } from "../errors/error-reporter.ts";
 
 export async function improve(
   positionals: string[],

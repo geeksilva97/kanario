@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { HttpClient } from "../http.ts";
 import { uploadMedia, setFeaturedImage } from "../wordpress.ts";
-import { FileError } from "../errors.ts";
+import { FileError } from "../errors/index.ts";
 
 export interface PickOptions {
   wpHttp: HttpClient;

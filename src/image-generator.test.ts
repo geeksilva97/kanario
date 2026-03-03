@@ -8,7 +8,7 @@ import { createImageBackend, padToWidescreen, encodeMascot, generateSingleImage 
 import { createQwenBackend } from "./qwen-backend.ts";
 import type { HttpClient } from "./http.ts";
 import type { ImageBackend } from "./image-backend.ts";
-import { ImageBackendError } from "./errors.ts";
+import { ImageBackendError } from "./errors/index.ts";
 
 const fakeRunpodHttp: HttpClient = {
   baseUrl: "https://api.runpod.ai/v2/qwen-image-edit",

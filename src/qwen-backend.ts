@@ -3,7 +3,7 @@ import { config } from "./config.ts";
 import { createHttpClient, type HttpClient } from "./http.ts";
 import { encodeMascot } from "./image-generator.ts";
 import type { ImageBackend } from "./image-backend.ts";
-import { HttpError, ImageBackendError } from "./errors.ts";
+import { HttpError, ImageBackendError } from "./errors/index.ts";
 
 const POLL_INTERVAL_MS = 3_000;
 

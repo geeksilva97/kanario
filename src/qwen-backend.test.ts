@@ -6,7 +6,7 @@ import os from "node:os";
 import sharp from "sharp";
 import { createQwenBackend } from "./qwen-backend.ts";
 import type { HttpClient, HttpRequestInit } from "./http.ts";
-import { HttpError, ImageBackendError } from "./errors.ts";
+import { HttpError, ImageBackendError } from "./errors/index.ts";
 
 function mockRunpodClient(impl: (path: string, init?: HttpRequestInit) => Promise<Response>): HttpClient {
   return {

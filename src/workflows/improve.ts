@@ -4,7 +4,7 @@ import { config } from "../config.ts";
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
 import { createRunpodClient } from "../qwen-backend.ts";
 import type { ImageModel } from "../image-backend.ts";
-import { FileError, ConfigError } from "../errors.ts";
+import { FileError, ConfigError } from "../errors/index.ts";
 
 export interface ImproveOptions {
   sourceImagePath: string;

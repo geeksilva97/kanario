@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { WPCredentials } from "../credentials.ts";
 import type { CommandDeps } from "./command-deps.ts";
-import { formatError } from "../error-reporter.ts";
+import { formatError } from "../errors/error-reporter.ts";
 
 // Discord interaction response types
 const DEFERRED_CHANNEL_MESSAGE = 5;

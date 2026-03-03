@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { formatError } from "./error-reporter.ts";
-import { WordPressError, ImageBackendError, ConfigError, FileError, KanarioError } from "./errors.ts";
+import { WordPressError, ImageBackendError, ConfigError, FileError, KanarioError } from "./index.ts";
 
 describe("formatError", () => {
   it("returns message for KanarioError with no hint", () => {

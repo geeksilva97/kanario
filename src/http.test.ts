@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createHttpClient } from "./http.ts";
-import { HttpError } from "./errors.ts";
+import { HttpError } from "./errors/index.ts";
 
 describe("createHttpClient", () => {
   it("prepends baseUrl to relative paths", async (t) => {

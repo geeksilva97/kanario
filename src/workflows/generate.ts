@@ -9,7 +9,7 @@ import { generateSingleImage, createImageBackend } from "../image-generator.ts";
 import { createRunpodClient } from "../qwen-backend.ts";
 import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
-import { ConfigError } from "../errors.ts";
+import { ConfigError } from "../errors/index.ts";
 
 function toMascotId(mascot: string): MascotId {
   // `in` check guards this, but TS doesn't narrow string → keyof

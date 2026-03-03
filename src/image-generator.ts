@@ -4,7 +4,7 @@ import sharp from "sharp";
 import type { HttpClient } from "./http.ts";
 import type { ImageBackend, ImageModel } from "./image-backend.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
-import { ImageBackendError } from "./errors.ts";
+import { ImageBackendError } from "./errors/index.ts";
 
 export interface SingleImageOptions {
   prompt: string;

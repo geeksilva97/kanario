@@ -1,6 +1,6 @@
 import { config } from "./config.ts";
 import { createHttpClient, type HttpClient } from "./http.ts";
-import { HttpError } from "./errors.ts";
+import { HttpError } from "./errors/index.ts";
 
 export interface WPCredentials {
   wpUrl: string;

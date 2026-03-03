@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { generateWorkflow } from "./generate.ts";
 import type { HttpClient } from "../http.ts";
-import { ConfigError } from "../errors.ts";
+import { ConfigError } from "../errors/index.ts";
 
 const fakeHttp: HttpClient = {
   baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",

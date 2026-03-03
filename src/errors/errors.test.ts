@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { KanarioError, HttpError, WordPressError, ImageBackendError, ConfigError, FileError, parseWpErrorCode } from "./errors.ts";
+import { KanarioError, HttpError, WordPressError, ImageBackendError, ConfigError, FileError, parseWpErrorCode } from "./index.ts";
 
 describe("KanarioError", () => {
   it("sets type, message, and meta", () => {

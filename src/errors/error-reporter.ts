@@ -1,4 +1,4 @@
-import { KanarioError, WordPressError, ImageBackendError, ConfigError, FileError } from "./errors.ts";
+import { KanarioError, WordPressError, ImageBackendError, ConfigError, FileError } from "./index.ts";
 
 const WP_CODE_HINTS: Record<string, string> = {
   rest_post_invalid_id: "The post ID doesn't exist or belongs to a different post type.",

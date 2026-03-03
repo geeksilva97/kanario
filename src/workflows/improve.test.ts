@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
 import { nextPromptNumber, improveWorkflow } from "./improve.ts";
-import { FileError, ConfigError } from "../errors.ts";
+import { FileError, ConfigError } from "../errors/index.ts";
 
 describe("nextPromptNumber", () => {
   let tmpDir: string;

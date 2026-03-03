@@ -47,8 +47,15 @@ src/
 ├── index.ts                  # CLI entry point, parseArgs
 ├── config.ts                 # Env vars, mascot paths, style template, constants
 ├── credentials.ts            # WPCredentials interface, validateWPCredentials, credentialsFromEnv, createWpClient
-├── errors.ts                 # KanarioError base + domain subclasses (HttpError, WordPressError, ImageBackendError, ConfigError, FileError)
-├── error-reporter.ts         # formatError() — message + actionable hints dispatched by error type
+├── errors/
+│   ├── index.ts              # Barrel re-export for all error classes
+│   ├── kanario-error.ts      # KanarioError base class
+│   ├── http-error.ts         # HttpError (thrown by HttpClient on non-ok responses)
+│   ├── wordpress-error.ts    # WordPressError + parseWpErrorCode
+│   ├── image-backend-error.ts# ImageBackendError
+│   ├── config-error.ts       # ConfigError
+│   ├── file-error.ts         # FileError
+│   └── error-reporter.ts     # formatError() — message + actionable hints dispatched by error type
 ├── http.ts                   # HttpClient interface + createHttpClient factory (base URL binding, header merging, ok-check)
 ├── store.ts                  # SQLite-backed credential store with AES-256-GCM encryption (node:sqlite)
 ├── wordpress.ts              # WP REST API: fetchDraft, resolvePostId, stripHtml (all take HttpClient)

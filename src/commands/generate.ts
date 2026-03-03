@@ -2,7 +2,7 @@ import type { ImageModel } from "../image-backend.ts";
 import { credentialsFromEnv, createWpClient } from "../credentials.ts";
 import { resolvePostId } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
-import { formatError } from "../error-reporter.ts";
+import { formatError } from "../errors/error-reporter.ts";
 
 export async function generate(
   positionals: string[],

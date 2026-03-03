@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { stripHtml, parsePostId, resolvePostId, fetchDraft, uploadMedia, setFeaturedImage } from "./wordpress.ts";
 import type { HttpClient, HttpRequestInit } from "./http.ts";
-import { HttpError, WordPressError } from "./errors.ts";
+import { HttpError, WordPressError } from "./errors/index.ts";
 
 function mockHttpClient(impl: (path: string, init?: HttpRequestInit) => Promise<Response>): HttpClient {
   return {

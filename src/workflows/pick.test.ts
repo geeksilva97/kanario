@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { pickWorkflow } from "./pick.ts";
 import type { HttpClient } from "../http.ts";
-import { FileError, HttpError, WordPressError } from "../errors.ts";
+import { FileError, HttpError, WordPressError } from "../errors/index.ts";
 
 const fakeHttp: HttpClient = {
   baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",

@@ -1,4 +1,4 @@
-import { HttpError } from "./errors.ts";
+import { HttpError } from "./errors/index.ts";
 
 export interface HttpRequestInit extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;

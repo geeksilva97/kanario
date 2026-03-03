@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import type { HttpClient } from "./http.ts";
-import { HttpError, WordPressError } from "./errors.ts";
+import { HttpError, WordPressError } from "./errors/index.ts";
 
 export interface WPPost {
   title: string;
