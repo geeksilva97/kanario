@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import sharp from "sharp";
-import { createImageBackend, padToWidescreen, encodeMascot, generateSingleImage, generateImages } from "./image-generator.ts";
+import { createImageBackend, padToWidescreen, encodeMascot, generateSingleImage } from "./image-generator.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
 import type { HttpClient } from "./http.ts";
 import type { ImageBackend } from "./image-backend.ts";
@@ -169,31 +169,5 @@ describe("generateSingleImage", () => {
     }, fakeBackend());
 
     assert.ok(fs.existsSync(path.join(nested, "img.png")));
-  });
-});
-
-describe("generateImages", () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "kanario-gen-"));
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true });
-  });
-
-  it("generates two images with a/b suffixes", async () => {
-    const paths = await generateImages({
-      prompt: "test",
-      outputDir: tmpDir,
-      filenamePrefix: "prompt-1",
-    }, fakeBackend());
-
-    assert.equal(paths.length, 2);
-    assert.equal(path.basename(paths[0]), "prompt-1a.png");
-    assert.equal(path.basename(paths[1]), "prompt-1b.png");
-    assert.ok(fs.existsSync(paths[0]));
-    assert.ok(fs.existsSync(paths[1]));
   });
 });

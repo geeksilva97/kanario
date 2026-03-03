@@ -6,13 +6,6 @@ import type { ImageBackend, ImageModel } from "./image-backend.ts";
 import { createQwenBackend } from "./qwen-backend.ts";
 import { ImageBackendError } from "./errors.ts";
 
-export interface GenerateImageOptions {
-  prompt: string;
-  mascotPath?: string;
-  outputDir: string;
-  filenamePrefix: string;
-}
-
 export interface SingleImageOptions {
   prompt: string;
   mascotPath?: string;
@@ -81,27 +74,4 @@ export async function generateSingleImage(
   console.log(`  Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);
 
   return outputPath;
-}
-
-export async function generateImages(
-  options: GenerateImageOptions,
-  backend: ImageBackend,
-): Promise<string[]> {
-  const { prompt, mascotPath, outputDir, filenamePrefix } = options;
-
-  const suffixes = ["a", "b"];
-
-  const paths = await Promise.all(
-    suffixes.map((suffix) =>
-      generateSingleImage({
-        prompt,
-        mascotPath,
-        outputDir,
-        filename: `${filenamePrefix}${suffix}.png`,
-        seed: -1,
-      }, backend),
-    ),
-  );
-
-  return paths;
 }
