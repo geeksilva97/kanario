@@ -1,10 +1,11 @@
 import fs from "node:fs";
+import { DISCORD_API_BASE } from "../config.ts";
 import type { DiscordMessenger } from "./command-deps.ts";
 
 export function makeDiscordMessenger(applicationId: string, botToken: string): DiscordMessenger {
   return {
     async editOriginalMessage(token, content, files?) {
-      const url = `https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`;
+      const url = `${DISCORD_API_BASE}/webhooks/${applicationId}/${token}/messages/@original`;
 
       if (!files || files.length === 0) {
         await fetch(url, {

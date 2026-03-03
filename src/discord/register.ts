@@ -1,4 +1,4 @@
-import { config } from "../config.ts";
+import { config, DISCORD_API_BASE } from "../config.ts";
 import { COMMAND_DEFINITIONS } from "./commands.ts";
 
 const { discordApplicationId, discordToken } = config;
@@ -8,7 +8,7 @@ if (!discordApplicationId || !discordToken) {
   process.exit(1);
 }
 
-const url = `https://discord.com/api/v10/applications/${discordApplicationId}/commands`;
+const url = `${DISCORD_API_BASE}/applications/${discordApplicationId}/commands`;
 
 console.log(`Registering ${COMMAND_DEFINITIONS.length} commands ...`);
 

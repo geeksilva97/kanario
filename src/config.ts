@@ -26,6 +26,8 @@ export type MascotId = keyof typeof MASCOTS;
 
 export const OUTPUT_DIR = path.join(PROJECT_ROOT, "output");
 
+export const DISCORD_API_BASE = "https://discord.com/api/v10";
+
 export const BACKGROUND_COLORS = {
   white:  { hex: "#ffffff", prompt: "pure white" },
   cream:  { hex: "#fff7c9", prompt: "soft warm yellow" },
