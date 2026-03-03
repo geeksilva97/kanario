@@ -33,19 +33,21 @@ export function parsePostId(input: string): string {
   return input;
 }
 
+function wrapHttpError<T>(promise: Promise<T>, transform: (err: HttpError) => WordPressError): Promise<T> {
+  return promise.catch((err: unknown) => {
+    if (HttpError.is(err)) throw transform(err);
+    throw err;
+  });
+}
+
 async function fetchPostIdBySlug(
   http: HttpClient,
   slug: string,
 ): Promise<string> {
-  let response: Response;
-  try {
-    response = await http.request(`/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`);
-  } catch (err) {
-    if (HttpError.is(err)) {
-      throw WordPressError.slugLookupFailed(slug, err.meta.status, err.meta.statusText, err.meta.body);
-    }
-    throw err;
-  }
+  const response = await wrapHttpError(
+    http.request(`/posts?slug=${encodeURIComponent(slug)}&_fields=id&status=any`),
+    (err) => WordPressError.slugLookupFailed(slug, err.meta.status, err.meta.statusText, err.meta.body),
+  );
 
   const data = await response.json();
   if (!Array.isArray(data) || data.length === 0) {
@@ -82,15 +84,10 @@ export async function fetchDraft(
   http: HttpClient,
   postId: string,
 ): Promise<WPPost> {
-  let response: Response;
-  try {
-    response = await http.request(`/posts/${postId}`);
-  } catch (err) {
-    if (HttpError.is(err)) {
-      throw WordPressError.fetchFailed(postId, err.meta.status, err.meta.statusText, err.meta.body);
-    }
-    throw err;
-  }
+  const response = await wrapHttpError(
+    http.request(`/posts/${postId}`),
+    (err) => WordPressError.fetchFailed(postId, err.meta.status, err.meta.statusText, err.meta.body),
+  );
 
   const data = await response.json();
 
@@ -108,22 +105,17 @@ export async function uploadMedia(
 ): Promise<number> {
   const body = fs.readFileSync(imagePath);
 
-  let response: Response;
-  try {
-    response = await http.request("/media", {
+  const response = await wrapHttpError(
+    http.request("/media", {
       method: "POST",
       headers: {
         "Content-Type": "image/png",
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
       body,
-    });
-  } catch (err) {
-    if (HttpError.is(err)) {
-      throw WordPressError.uploadFailed(err.meta.status, err.meta.statusText, err.meta.body);
-    }
-    throw err;
-  }
+    }),
+    (err) => WordPressError.uploadFailed(err.meta.status, err.meta.statusText, err.meta.body),
+  );
 
   const data = await response.json();
   return data.id;
@@ -134,18 +126,12 @@ export async function setFeaturedImage(
   postId: string,
   mediaId: number,
 ): Promise<void> {
-  try {
-    await http.request(`/posts/${postId}`, {
+  await wrapHttpError(
+    http.request(`/posts/${postId}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ featured_media: mediaId }),
-    });
-  } catch (err) {
-    if (HttpError.is(err)) {
-      throw WordPressError.setFeaturedFailed(err.meta.status, err.meta.statusText, err.meta.body);
-    }
-    throw err;
-  }
+    }),
+    (err) => WordPressError.setFeaturedFailed(err.meta.status, err.meta.statusText, err.meta.body),
+  );
 }
