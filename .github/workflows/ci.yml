@@ -51,6 +51,8 @@ jobs:
           WP_URL=${{ secrets.WP_URL }}
           WP_USERNAME=${{ secrets.WP_USERNAME }}
           WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}
+          WP_PUBLISHED_POST_ID=${{ secrets.WP_PUBLISHED_POST_ID }}
+          WP_DRAFT_POST_ID=${{ secrets.WP_DRAFT_POST_ID }}
           EOF
       - run: npm run test:integration
 

@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { fetchDraft } from "../src/wordpress.ts";
 import { credentialsFromEnv, createWpClient } from "../src/credentials.ts";
 
-// Known post IDs on blog.codeminer42.com
-const PUBLISHED_POST_ID = "12518";
-const DRAFT_POST_ID = "2402";
+const PUBLISHED_POST_ID = process.env.WP_PUBLISHED_POST_ID!;
+const DRAFT_POST_ID = process.env.WP_DRAFT_POST_ID!;
 const NONEXISTENT_POST_ID = "999999";
 
 const creds = credentialsFromEnv();

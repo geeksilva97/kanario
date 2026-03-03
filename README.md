@@ -434,6 +434,8 @@ The WIF setup:
 | `WP_URL` | Integration Tests, Smoke Tests |
 | `WP_USERNAME` | Integration Tests, Smoke Tests |
 | `WP_APP_PASSWORD` | Integration Tests, Smoke Tests |
+| `WP_PUBLISHED_POST_ID` | Integration Tests — a published post ID |
+| `WP_DRAFT_POST_ID` | Integration Tests — a draft post ID (must stay unpublished) |
 | `GEMINI_API_KEY` | Smoke Tests |
 | `RUNPOD_API_KEY` | Smoke Tests |
 | `GCP_PROJECT_ID` | Deploy |
