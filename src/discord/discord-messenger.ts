@@ -1,19 +1,22 @@
 import fs from "node:fs";
 import { DISCORD_API_BASE } from "../config.ts";
+import { createHttpClient } from "../http.ts";
 import type { DiscordMessenger } from "./command-deps.ts";
 
 export function makeDiscordMessenger(applicationId: string, botToken: string): DiscordMessenger {
+  const http = createHttpClient({
+    baseUrl: DISCORD_API_BASE,
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+
   return {
     async editOriginalMessage(token, content, files?) {
-      const url = `${DISCORD_API_BASE}/webhooks/${applicationId}/${token}/messages/@original`;
+      const path = `/webhooks/${applicationId}/${token}/messages/@original`;
 
       if (!files || files.length === 0) {
-        await fetch(url, {
+        await http.request(path, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bot ${botToken}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
         });
         return;
@@ -49,15 +52,10 @@ export function makeDiscordMessenger(applicationId: string, botToken: string): D
 
       parts.push(Buffer.from(`--${boundary}--\r\n`));
 
-      const body = Buffer.concat(parts);
-
-      await fetch(url, {
+      await http.request(path, {
         method: "PATCH",
-        headers: {
-          "Content-Type": `multipart/form-data; boundary=${boundary}`,
-          Authorization: `Bot ${botToken}`,
-        },
-        body,
+        headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+        body: Buffer.concat(parts),
       });
     },
   };

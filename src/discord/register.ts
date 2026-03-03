@@ -1,4 +1,5 @@
 import { config, DISCORD_API_BASE } from "../config.ts";
+import { createHttpClient } from "../http.ts";
 import { COMMAND_DEFINITIONS } from "./commands.ts";
 
 const { discordApplicationId, discordToken } = config;
@@ -8,24 +9,23 @@ if (!discordApplicationId || !discordToken) {
   process.exit(1);
 }
 
-const url = `${DISCORD_API_BASE}/applications/${discordApplicationId}/commands`;
-
-console.log(`Registering ${COMMAND_DEFINITIONS.length} commands ...`);
-
-const response = await fetch(url, {
-  method: "PUT",
+const discordHttp = createHttpClient({
+  baseUrl: DISCORD_API_BASE,
   headers: {
     "Content-Type": "application/json",
     Authorization: `Bot ${discordToken}`,
   },
-  body: JSON.stringify(COMMAND_DEFINITIONS),
 });
 
-if (!response.ok) {
-  const text = await response.text();
-  console.error(`Failed to register commands: ${response.status} ${text}`);
+console.log(`Registering ${COMMAND_DEFINITIONS.length} commands ...`);
+
+const response = await discordHttp.request(`/applications/${discordApplicationId}/commands`, {
+  method: "PUT",
+  body: JSON.stringify(COMMAND_DEFINITIONS),
+}).catch((err: unknown) => {
+  console.error(`Failed to register commands: ${err instanceof Error ? err.message : err}`);
   process.exit(1);
-}
+});
 
 // Discord PUT /commands returns an array — no SDK types for this endpoint
 const result = await response.json() as { name: string; id: string }[];
