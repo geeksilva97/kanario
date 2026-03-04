@@ -5,7 +5,7 @@ import { config } from "./config.ts";
 import type { WPCredentials } from "./credentials.ts";
 
 const fakeCreds: WPCredentials = {
-  wpUrl: "https://blog.codeminer42.com",
+  wpUrl: "https://example.com",
   wpUsername: "testuser",
   wpAppPassword: "xxxx xxxx xxxx",
 };
@@ -45,7 +45,7 @@ describe("validateWPCredentials", () => {
 describe("createWpClient", () => {
   it("creates an HttpClient with correct baseUrl", () => {
     const http = createWpClient(fakeCreds);
-    assert.equal(http.baseUrl, "https://blog.codeminer42.com/wp-json/wp/v2");
+    assert.equal(http.baseUrl, "https://example.com/wp-json/wp/v2");
   });
 });
 

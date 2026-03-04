@@ -8,7 +8,7 @@ import { createCredentialStore, type CredentialStore } from "./store.ts";
 import type { WPCredentials } from "./credentials.ts";
 
 const fakeCreds: WPCredentials = {
-  wpUrl: "https://blog.codeminer42.com",
+  wpUrl: "https://example.com",
   wpUsername: "testuser",
   wpAppPassword: "xxxx xxxx xxxx",
 };

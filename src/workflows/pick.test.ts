@@ -8,7 +8,7 @@ import type { HttpClient } from "../http.ts";
 import { FileError, HttpError, WordPressError } from "../errors/index.ts";
 
 const fakeHttp: HttpClient = {
-  baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+  baseUrl: "https://example.com/wp-json/wp/v2",
   request: async () => new Response("{}"),
 };
 
@@ -41,7 +41,7 @@ describe("pickWorkflow", () => {
 
     let callNum = 0;
     const http: HttpClient = {
-      baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+      baseUrl: "https://example.com/wp-json/wp/v2",
       request: async () => {
         callNum++;
         if (callNum === 1) {
@@ -70,9 +70,9 @@ describe("pickWorkflow", () => {
 
     const wpBody = JSON.stringify({ code: "rest_cannot_create", message: "Sorry, you are not allowed to upload media." });
     const http: HttpClient = {
-      baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+      baseUrl: "https://example.com/wp-json/wp/v2",
       request: async (_p, init) => {
-        throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 403, "Forbidden", wpBody);
+        throw new HttpError(init?.method ?? "GET", "https://example.com/wp-json/wp/v2/media", 403, "Forbidden", wpBody);
       },
     };
 

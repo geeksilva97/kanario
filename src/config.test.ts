@@ -4,7 +4,7 @@ import { PROMPT_TEMPLATE, config, PROJECT_ROOT } from "./config.ts";
 
 describe("config", () => {
   it("has a default wpUrl", () => {
-    assert.equal(config.wpUrl, "https://blog.codeminer42.com");
+    assert.equal(config.wpUrl, "");
   });
 
   it("PROJECT_ROOT points to project root", () => {

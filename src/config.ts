@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_ROOT = path.resolve(__dirname, "..");
 
 export const config = {
-  wpUrl: process.env.WP_URL || "https://blog.codeminer42.com",
+  wpUrl: process.env.WP_URL || "",
   wpUsername: process.env.WP_USERNAME || "",
   wpAppPassword: process.env.WP_APP_PASSWORD || "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",

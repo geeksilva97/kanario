@@ -11,7 +11,7 @@ The Discord bot runs on Google Cloud Run so it's always available at a public HT
 ```bash
 gcloud artifacts repositories create kanario \
   --repository-format=docker \
-  --location=southamerica-east1 \
+  --location=your-region \
   --project=your-gcp-project
 ```
 
@@ -23,8 +23,11 @@ GCP_PROJECT_ID=your-gcp-project ./deploy/deploy.sh
 
 The script builds the Docker image, pushes it to Artifact Registry, and deploys to Cloud Run. It prints the service URL when done.
 
+Required env vars:
+- `GCS_CREDENTIALS_BUCKET` — GCS bucket name for credential storage
+
 Optional env vars:
-- `GCP_REGION` — Cloud Run region (default: `southamerica-east1`)
+- `GCP_REGION` — Cloud Run region (default: `us-central1`)
 
 ## Credential storage (GCS FUSE)
 
@@ -33,7 +36,7 @@ Per-user WordPress credentials are stored in a SQLite database. On Cloud Run, th
 One-time setup:
 
 ```bash
-gcloud storage buckets create gs://your-kanario-credentials-bucket --location=southamerica-east1
+gcloud storage buckets create gs://your-kanario-credentials-bucket --location=your-region
 ```
 
 The `deploy.sh` script automatically mounts the bucket at `/app/data/` using `--add-volume` and `--add-volume-mount` flags.
@@ -44,7 +47,7 @@ After the first deploy, set the required environment variables on the Cloud Run 
 
 ```bash
 gcloud run services update kanario-discord \
-  --region southamerica-east1 \
+  --region your-region \
   --set-env-vars "GEMINI_API_KEY=...,RUNPOD_API_KEY=...,DISCORD_TOKEN=...,DISCORD_PUBLIC_KEY=...,DISCORD_APPLICATION_ID=...,CREDENTIAL_ENCRYPTION_KEY=..."
 ```
 
@@ -107,6 +110,8 @@ The WIF setup:
 | `GEMINI_API_KEY` | Smoke Tests |
 | `RUNPOD_API_KEY` | Smoke Tests |
 | `GCP_PROJECT_ID` | Deploy |
+| `GCP_REGION` | Deploy (e.g. `us-central1`) |
+| `GCS_CREDENTIALS_BUCKET` | Deploy (GCS bucket name for credential DB) |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Deploy (WIF provider path) |
 | `GCP_SERVICE_ACCOUNT` | Deploy (deployer service account email) |
 

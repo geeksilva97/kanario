@@ -27,7 +27,7 @@ npm run server
 npm run discord:register
 
 # Deploy Discord bot to Cloud Run (manual)
-GCP_PROJECT_ID=edy-ai-playground ./deploy/deploy.sh
+GCP_PROJECT_ID=your-gcp-project GCS_CREDENTIALS_BUCKET=your-bucket ./deploy/deploy.sh
 
 # Deploy happens automatically via CI on push to main
 # (all tests must pass first — see CI/CD section below)

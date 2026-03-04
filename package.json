@@ -1,8 +1,15 @@
 {
   "name": "kanario",
   "version": "1.0.0",
+  "description": "Blog thumbnail generator: WordPress draft → LLM prompts → cover images via Qwen Image Edit",
+  "license": "MIT",
+  "author": "geeksilva97",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geeksilva97/kanario"
+  },
+  "keywords": ["blog", "thumbnail", "wordpress", "discord-bot", "image-generation", "qwen"],
   "type": "module",
-  "private": true,
   "scripts": {
     "start": "node --env-file=.env src/index.ts",
     "test": "CREDENTIAL_ENCRYPTION_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa node --experimental-test-module-mocks --test 'src/**/*.test.ts'",

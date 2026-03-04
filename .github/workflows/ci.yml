@@ -98,7 +98,9 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker southamerica-east1-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+        env:
+          REGION: ${{ secrets.GCP_REGION }}
       - name: Build and push image
         run: |
           IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$SERVICE_NAME"
@@ -106,7 +108,7 @@ jobs:
           docker push "$IMAGE"
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          REGION: southamerica-east1
+          REGION: ${{ secrets.GCP_REGION }}
           REPO_NAME: kanario
           SERVICE_NAME: kanario-discord
       - name: Deploy to Cloud Run
@@ -124,10 +126,11 @@ jobs:
             --no-cpu-throttling \
             --min-instances 1 \
             --max-instances 3 \
-            --add-volume name=creds-vol,type=cloud-storage,bucket=kanario-credentials \
+            --add-volume name=creds-vol,type=cloud-storage,bucket="$GCS_CREDENTIALS_BUCKET" \
             --add-volume-mount volume=creds-vol,mount-path=/app/data
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          REGION: southamerica-east1
+          REGION: ${{ secrets.GCP_REGION }}
           REPO_NAME: kanario
           SERVICE_NAME: kanario-discord
+          GCS_CREDENTIALS_BUCKET: ${{ secrets.GCS_CREDENTIALS_BUCKET }}

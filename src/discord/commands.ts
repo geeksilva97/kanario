@@ -104,7 +104,7 @@ export const COMMAND_DEFINITIONS = [
     options: [
       {
         name: "wp_url",
-        description: "WordPress site URL (e.g. https://blog.codeminer42.com)",
+        description: "WordPress site URL (e.g. https://example.com)",
         type: 3, // STRING
         required: true,
       },

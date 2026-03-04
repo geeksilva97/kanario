@@ -9,7 +9,7 @@ import { HttpError, WordPressError } from "./errors/index.ts";
 
 function mockHttpClient(impl: (path: string, init?: HttpRequestInit) => Promise<Response>): HttpClient {
   return {
-    baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+    baseUrl: "https://example.com/wp-json/wp/v2",
     request: impl,
   };
 }
@@ -51,7 +51,7 @@ describe("parsePostId", () => {
 
   it("extracts post ID from a wp-admin edit URL", () => {
     assert.equal(
-      parsePostId("https://blog.codeminer42.com/wp-admin/post.php?post=12518&action=edit"),
+      parsePostId("https://example.com/wp-admin/post.php?post=12518&action=edit"),
       "12518",
     );
   });
@@ -82,7 +82,7 @@ describe("resolvePostId", () => {
     const http = mockHttpClient(async () => { throw new Error("should not be called"); });
     const result = await resolvePostId(
       http,
-      "https://blog.codeminer42.com/wp-admin/post.php?post=12518&action=edit",
+      "https://example.com/wp-admin/post.php?post=12518&action=edit",
     );
     assert.equal(result, "12518");
   });
@@ -94,7 +94,7 @@ describe("resolvePostId", () => {
       return new Response(JSON.stringify([{ id: 99 }]), { status: 200 });
     });
 
-    const result = await resolvePostId(http, "https://blog.codeminer42.com/some-slug/");
+    const result = await resolvePostId(http, "https://example.com/some-slug/");
     assert.equal(result, "99");
     assert.ok(calledPath.includes("slug=some-slug"));
   });
@@ -105,7 +105,7 @@ describe("resolvePostId", () => {
     );
 
     await assert.rejects(
-      () => resolvePostId(http, "https://blog.codeminer42.com/nonexistent-post/"),
+      () => resolvePostId(http, "https://example.com/nonexistent-post/"),
       (err: unknown) => {
         if (!WordPressError.is(err)) return assert.fail("Expected WordPressError");
         assert.equal(err.type, "wp_slug_not_found");
@@ -123,7 +123,7 @@ describe("resolvePostId", () => {
       return new Response(JSON.stringify([{ id: 42 }]), { status: 200 });
     });
 
-    const result = await resolvePostId(http, "https://blog.codeminer42.com/my-post/");
+    const result = await resolvePostId(http, "https://example.com/my-post/");
     assert.equal(result, "42");
     assert.ok(calledPath.includes("slug=my-post"));
     assert.ok(!calledPath.includes("slug=my-post/"));
@@ -136,7 +136,7 @@ describe("resolvePostId", () => {
       return new Response(JSON.stringify([{ id: 77 }]), { status: 200 });
     });
 
-    const result = await resolvePostId(http, "https://blog.codeminer42.com/category/post-slug/");
+    const result = await resolvePostId(http, "https://example.com/category/post-slug/");
     assert.equal(result, "77");
     assert.ok(calledPath.includes("slug=category%2Fpost-slug"));
   });
@@ -179,7 +179,7 @@ describe("fetchDraft", () => {
   it("throws WordPressError on non-200 response with wpCode", async () => {
     const wpBody = JSON.stringify({ code: "rest_post_invalid_id", message: "Invalid post ID." });
     const http = mockHttpClient(async (_p, init) => {
-      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/999", 404, "Not Found", wpBody);
+      throw new HttpError(init?.method ?? "GET", "https://example.com/wp-json/wp/v2/posts/999", 404, "Not Found", wpBody);
     });
 
     await assert.rejects(
@@ -232,7 +232,7 @@ describe("uploadMedia", () => {
   it("throws WordPressError on non-200 response with wpCode", async () => {
     const wpBody = JSON.stringify({ code: "rest_cannot_create", message: "Sorry, you are not allowed to upload media." });
     const http = mockHttpClient(async (_p, init) => {
-      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/media", 403, "Forbidden", wpBody);
+      throw new HttpError(init?.method ?? "GET", "https://example.com/wp-json/wp/v2/media", 403, "Forbidden", wpBody);
     });
 
     await assert.rejects(
@@ -270,7 +270,7 @@ describe("setFeaturedImage", () => {
   it("throws WordPressError on non-200 response with wpCode", async () => {
     const wpBody = JSON.stringify({ code: "rest_cannot_edit", message: "Sorry, you are not allowed to edit this post." });
     const http = mockHttpClient(async (_p, init) => {
-      throw new HttpError(init?.method ?? "GET", "https://blog.codeminer42.com/wp-json/wp/v2/posts/123", 403, "Forbidden", wpBody);
+      throw new HttpError(init?.method ?? "GET", "https://example.com/wp-json/wp/v2/posts/123", 403, "Forbidden", wpBody);
     });
 
     await assert.rejects(

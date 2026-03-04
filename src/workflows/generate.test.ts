@@ -5,7 +5,7 @@ import type { HttpClient } from "../http.ts";
 import { ConfigError } from "../errors/index.ts";
 
 const fakeHttp: HttpClient = {
-  baseUrl: "https://blog.codeminer42.com/wp-json/wp/v2",
+  baseUrl: "https://example.com/wp-json/wp/v2",
   request: async () => new Response("{}"),
 };
 
