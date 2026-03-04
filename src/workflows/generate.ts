@@ -99,11 +99,19 @@ export async function generateWorkflow(
 
   const concurrency = backend.maxConcurrency ?? jobs.length;
   log(`  Submitting ${jobs.length} jobs (concurrency: ${concurrency}) ...`);
+  const imagesStart = Date.now();
+  let completedCount = 0;
   const imagePaths = await mapWithConcurrency(
     jobs,
-    ({ label, ...opts }) => generateSingleImage(opts, backend),
+    ({ label, ...opts }) =>
+      generateSingleImage(opts, backend).then((p) => {
+        completedCount++;
+        log(`  Image ${completedCount}/${jobs.length} done (${formatElapsed(Date.now() - imagesStart)})`);
+        return p;
+      }),
     concurrency,
   );
+  log(`  All ${jobs.length} images done in ${formatElapsed(Date.now() - imagesStart)}`);
 
   // Step 5: Save prompts.json
   log(`[5/5] Saving metadata ...`);
@@ -122,6 +130,11 @@ export async function generateWorkflow(
     imagePaths,
     outputDir,
   };
+}
+
+function formatElapsed(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 /**
