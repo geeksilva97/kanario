@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import Anthropic from "@anthropic-ai/sdk";
-import { config } from "./config.ts";
+import { config, MODELS } from "./config.ts";
 import type { WPPost } from "./wordpress.ts";
+import { isGeminiRateLimit } from "./utils/gemini.ts";
 
 const SYSTEM_PROMPT = `Extract the key points from this blog post for a creative director designing cover thumbnails. Focus on:
 - The core thesis or claim
@@ -9,16 +10,6 @@ const SYSTEM_PROMPT = `Extract the key points from this blog post for a creative
 - 3-5 supporting highlights
 
 Be concise — under 300 words.`;
-
-function isGeminiRateLimit(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  try {
-    const parsed = JSON.parse(err.message);
-    return parsed?.error?.code === 429 || parsed?.error?.status === "RESOURCE_EXHAUSTED";
-  } catch {
-    return false;
-  }
-}
 
 export async function summarizePost(
   post: WPPost,
@@ -42,7 +33,7 @@ async function summarizeWithGemini(userMessage: string): Promise<string> {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: MODELS.geminiSummarize,
       contents: userMessage,
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -53,13 +44,13 @@ async function summarizeWithGemini(userMessage: string): Promise<string> {
   } catch (err) {
     if (isGeminiRateLimit(err)) {
       console.warn("Gemini rate limit hit, falling back to Claude Sonnet for summarization ...");
-      return summarizeWithClaude(userMessage, "claude-sonnet-4-20250514");
+      return summarizeWithClaude(userMessage, MODELS.claudePrompt);
     }
     throw err;
   }
 }
 
-async function summarizeWithClaude(userMessage: string, model = "claude-haiku-4-5-20251001"): Promise<string> {
+async function summarizeWithClaude(userMessage: string, model: string = MODELS.claudeSummarize): Promise<string> {
   const client = new Anthropic({ apiKey: config.anthropicApiKey || undefined });
 
   const message = await client.messages.create({

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { config } from "./config.ts";
+import { config, MODELS } from "./config.ts";
 import {
   type PromptResult,
   SYSTEM_PROMPT,
@@ -15,6 +15,7 @@ import {
   type RawPrompt,
 } from "./prompt-schema.ts";
 import type { WPPost } from "./wordpress.ts";
+import { isGeminiRateLimit } from "./utils/gemini.ts";
 
 const promptSchema = {
   type: Type.OBJECT,
@@ -50,16 +51,6 @@ const promptSchema = {
   required: ["prompts"],
 };
 
-function isGeminiRateLimit(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  try {
-    const parsed = JSON.parse(err.message);
-    return parsed?.error?.code === 429 || parsed?.error?.status === "RESOURCE_EXHAUSTED";
-  } catch {
-    return false;
-  }
-}
-
 export async function generatePrompts(post: WPPost, hint?: string): Promise<PromptResult> {
   const ai = new GoogleGenAI({
     vertexai: true,
@@ -68,7 +59,7 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: MODELS.geminiPrompt,
       contents: buildUserMessage(post, hint),
       config: {
         systemInstruction: SYSTEM_PROMPT,

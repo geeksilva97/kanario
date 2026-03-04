@@ -44,3 +44,12 @@ export type BackgroundId = keyof typeof BACKGROUND_COLORS;
 export const PROMPTS_DIR = path.join(PROJECT_ROOT, "prompts");
 
 export const PROMPT_TEMPLATE = fs.readFileSync(path.join(PROMPTS_DIR, "image-style.md"), "utf-8").trim();
+
+export const MODELS = {
+  claudePrompt: "claude-sonnet-4-20250514",
+  claudeSummarize: "claude-haiku-4-5-20251001",
+  geminiPrompt: "gemini-3-pro-preview",
+  geminiSummarize: "gemini-2.5-flash",
+} as const;
+
+export const HTTP_TIMEOUT_MS = 30_000;

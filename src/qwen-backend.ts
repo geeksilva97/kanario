@@ -24,17 +24,22 @@ export function createRunpodClient(): HttpClient {
   });
 }
 
+function wrapRunPodError<T>(
+  promise: Promise<T>,
+  transform: (err: HttpError) => ImageBackendError,
+): Promise<T> {
+  return promise.catch((err: unknown) => {
+    if (HttpError.is(err)) throw transform(err);
+    throw err;
+  });
+}
+
 async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<RunPodStatus> {
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-    let res: Response;
-    try {
-      res = await http.request(`/status/${jobId}`);
-    } catch (err) {
-      if (HttpError.is(err)) {
-        throw ImageBackendError.runpodApiError(err.meta.status, err.meta.body);
-      }
-      throw err;
-    }
+    const res = await wrapRunPodError(
+      http.request(`/status/${jobId}`),
+      (err) => ImageBackendError.runpodApiError(err.meta.status, err.meta.body),
+    );
     // res.json() returns unknown — no runtime validation for RunPod API responses
     const status = (await res.json()) as RunPodStatus;
 
@@ -54,7 +59,9 @@ async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<RunP
 
 export function createQwenBackend(http: HttpClient): ImageBackend {
   return {
-    async generate({ prompt, mascotPath, seed, wide }) {
+    async generate({ prompt, mascotPath, seed, wide, onProgress }) {
+      const log = onProgress ?? (() => {});
+      
       let mascotBase64: string;
       if (mascotPath) {
         mascotBase64 = await encodeMascot(mascotPath, wide);
@@ -76,35 +83,25 @@ export function createQwenBackend(http: HttpClient): ImageBackend {
         },
       };
 
-      console.log(`    Submitting job to RunPod Hub ...`);
-      let submitRes: Response;
-      try {
-        submitRes = await http.request("/run", {
+      log("Submitting job to RunPod Hub ...");
+      const submitRes = await wrapRunPodError(
+        http.request("/run", {
           method: "POST",
           body: JSON.stringify(body),
-        });
-      } catch (err) {
-        if (HttpError.is(err)) {
-          throw ImageBackendError.runpodApiError(err.meta.status, err.meta.body);
-        }
-        throw err;
-      }
+        }),
+        (err) => ImageBackendError.runpodApiError(err.meta.status, err.meta.body),
+      );
       const { id: jobId } = await submitRes.json();
 
-      console.log(`    Job ${jobId} queued, polling for result ...`);
+      log(`Job ${jobId} queued, polling for result ...`);
       const result = await pollUntilCompleted(http, jobId);
 
       const imageUrl = result.output!.result;
-      console.log(`    Downloading result image ...`);
-      let imageRes: Response;
-      try {
-        imageRes = await http.request(imageUrl);
-      } catch (err) {
-        if (HttpError.is(err)) {
-          throw ImageBackendError.downloadFailed(err.meta.status);
-        }
-        throw err;
-      }
+      log("Downloading result image ...");
+      const imageRes = await wrapRunPodError(
+        http.request(imageUrl),
+        (err) => ImageBackendError.downloadFailed(err.meta.status),
+      );
       return Buffer.from(await imageRes.arrayBuffer());
     },
   };

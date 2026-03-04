@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { config, OUTPUT_DIR, MASCOTS, type MascotId } from "../config.ts";
+import { config, OUTPUT_DIR, MASCOTS } from "../config.ts";
 import type { HttpClient } from "../http.ts";
 import { fetchDraft } from "../wordpress.ts";
 import { generatePrompts as claudeGeneratePrompts, type ImagePrompt } from "../prompt-generator.ts";
@@ -10,12 +10,7 @@ import { createRunpodClient } from "../qwen-backend.ts";
 import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
 import { ConfigError } from "../errors/index.ts";
-
-function toMascotId(mascot: string): MascotId {
-  // `in` check guards this, but TS doesn't narrow string → keyof
-  // https://github.com/microsoft/TypeScript/issues/43284
-  return mascot in MASCOTS ? (mascot as MascotId) : "miner";
-}
+import { isMascotId } from "../utils/type-guards.ts";
 
 export interface GenerateOptions {
   wpHttp: HttpClient;
@@ -86,7 +81,7 @@ export async function generateWorkflow(
 
   const jobs = result.prompts.map((prompt, i) => {
     const isNone = prompt.mascot === "none";
-    const mascotId = isNone ? undefined : toMascotId(prompt.mascot);
+    const mascotId = isNone ? undefined : (isMascotId(prompt.mascot) ? prompt.mascot : "miner");
     return {
       prompt: prompt.full_prompt,
       ...(mascotId ? { mascotPath: MASCOTS[mascotId] } : {}),
@@ -129,6 +124,15 @@ export async function generateWorkflow(
   };
 }
 
+/**
+ * Maps items with limited concurrency.
+ * 
+ * Note: This implementation relies on Node.js's single-threaded event loop.
+ * The shared `nextIndex` is safe because JavaScript is single-threaded —
+ * only one worker can increment the index at a time between await points.
+ * Do not use this in a multi-threaded environment (e.g., worker threads)
+ * without adding synchronization primitives.
+ */
 async function mapWithConcurrency<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,

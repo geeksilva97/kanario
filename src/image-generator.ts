@@ -13,6 +13,7 @@ export interface SingleImageOptions {
   filename: string;
   seed: number;
   wide?: boolean;
+  onProgress?: (msg: string) => void;
 }
 
 // Shared utilities used by backends
@@ -61,17 +62,18 @@ export async function generateSingleImage(
   options: SingleImageOptions,
   backend: ImageBackend,
 ): Promise<string> {
-  const { prompt, mascotPath, outputDir, filename, seed, wide = false } = options;
+  const { prompt, mascotPath, outputDir, filename, seed, wide = false, onProgress } = options;
 
   fs.mkdirSync(outputDir, { recursive: true });
 
-  console.log(`  Generating ${filename} ...`);
+  const log = onProgress ?? console.log;
+  log(`Generating ${filename} ...`);
 
-  const pngBuffer = await backend.generate({ prompt, mascotPath, seed, wide });
+  const pngBuffer = await backend.generate({ prompt, mascotPath, seed, wide, onProgress });
 
   const outputPath = path.join(outputDir, filename);
   fs.writeFileSync(outputPath, pngBuffer);
-  console.log(`  Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);
+  log(`Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);
 
   return outputPath;
 }

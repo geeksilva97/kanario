@@ -4,6 +4,7 @@ import { makeCommandHandler, COMMAND_DEFINITIONS, HELP_TEXT } from "./commands.t
 import type { DiscordInteraction } from "./commands.ts";
 import type { CommandDeps } from "./command-deps.ts";
 import type { HttpClient } from "../http.ts";
+import { tick } from "../../test/helpers.ts";
 
 const fakeHttp: HttpClient = {
   baseUrl: "https://blog.example.com/wp-json/wp/v2",
@@ -67,11 +68,6 @@ function makeInteraction(command: string, options: Record<string, string> = {}, 
     },
     ...overrides,
   };
-}
-
-// Helper to wait for fire-and-forget async handlers to settle
-function tick() {
-  return new Promise((resolve) => setTimeout(resolve, 10));
 }
 
 // Extract message string from the Nth editOriginalMessage call (default: first)

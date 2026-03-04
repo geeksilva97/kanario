@@ -1,4 +1,4 @@
-import { config } from "./config.ts";
+import { config, HTTP_TIMEOUT_MS } from "./config.ts";
 import { createHttpClient, type HttpClient } from "./http.ts";
 import { HttpError } from "./errors/index.ts";
 
@@ -19,6 +19,7 @@ export function createWpClient(creds: WPCredentials): HttpClient {
   return createHttpClient({
     baseUrl: `${creds.wpUrl}/wp-json/wp/v2`,
     headers: { Authorization: `Basic ${auth}` },
+    timeout: HTTP_TIMEOUT_MS,
   });
 }
 

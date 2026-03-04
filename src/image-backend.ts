@@ -4,6 +4,7 @@ export interface ImageBackend {
     mascotPath?: string;
     seed: number;
     wide: boolean;
+    onProgress?: (msg: string) => void;
   }): Promise<Buffer>;
   maxConcurrency?: number;
 }

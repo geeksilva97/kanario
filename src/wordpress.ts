@@ -27,8 +27,10 @@ export function parsePostId(input: string): string {
     const url = new URL(input);
     const id = url.searchParams.get("post");
     if (id) return id;
-  } catch {
-    // not a URL, treat as raw post ID
+  } catch (err) {
+    // TypeError from URL constructor means input is not a valid URL
+    // — treat as raw post ID. Re-throw other errors.
+    if (!(err instanceof TypeError)) throw err;
   }
   return input;
 }

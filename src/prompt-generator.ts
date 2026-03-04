@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
-import { config, PROMPT_TEMPLATE, PROMPTS_DIR, BACKGROUND_COLORS, type BackgroundId } from "./config.ts";
+import { config, PROMPT_TEMPLATE, PROMPTS_DIR, BACKGROUND_COLORS, MODELS } from "./config.ts";
 import type { WPPost } from "./wordpress.ts";
 import {
   SCHEMA_DESCRIPTIONS,
@@ -10,6 +10,7 @@ import {
   buildUserMessage,
   type RawPrompt,
 } from "./prompt-schema.ts";
+import { isBackgroundId } from "./utils/type-guards.ts";
 
 export interface ImagePrompt extends RawPrompt {
   full_prompt: string;
@@ -23,12 +24,7 @@ export const SYSTEM_PROMPT = fs.readFileSync(path.join(PROMPTS_DIR, "system.md")
 
 export function buildFullPrompt(sceneDescription: string, backgroundId: string): string {
   const scene = sceneDescription.replace(/\.$/, "");
-  const bg = (backgroundId in BACKGROUND_COLORS
-    // `in` check above guards this, but TS doesn't narrow string → keyof
-    // https://github.com/microsoft/TypeScript/issues/43284
-    ? BACKGROUND_COLORS[backgroundId as BackgroundId]
-    : BACKGROUND_COLORS.white
-  ).prompt;
+  const bg = (isBackgroundId(backgroundId) ? BACKGROUND_COLORS[backgroundId] : BACKGROUND_COLORS.white).prompt;
   return PROMPT_TEMPLATE.replace("[SCENE]", scene).replace("[BACKGROUND]", bg);
 }
 
@@ -43,7 +39,7 @@ export async function generatePrompts(post: WPPost, hint?: string): Promise<Prom
   const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODELS.claudePrompt,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     tools: [

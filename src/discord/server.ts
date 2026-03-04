@@ -1,7 +1,7 @@
 import Fastify, { type FastifyRequest, type FastifyReply } from "fastify";
 import { config, OUTPUT_DIR } from "../config.ts";
 import { validateWPCredentials, createWpClient } from "../credentials.ts";
-import { loadCredentials, saveCredentials, deleteCredentials, getCredentialInfo } from "../store.ts";
+import { createCredentialStore } from "../store.ts";
 import { resolvePostId, fetchDraft } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 import { improveWorkflow } from "../workflows/improve.ts";
@@ -47,13 +47,10 @@ export async function verifySignature(
 }
 
 export function buildApp() {
+  const credentialStore = createCredentialStore();
+  
   const deps: CommandDeps = {
-    credentialStore: {
-      load: loadCredentials,
-      save: saveCredentials,
-      delete: deleteCredentials,
-      getInfo: getCredentialInfo,
-    },
+    credentialStore,
     discord: makeDiscordMessenger(config.discordApplicationId, config.discordToken),
     wordpress: {
       resolvePostId,

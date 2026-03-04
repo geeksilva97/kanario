@@ -413,26 +413,26 @@ export function makeCommandHandler(deps: CommandDeps) {
 
     // Fire-and-forget: run the handler without awaiting
     if (commandName === "register") {
-      handleRegisterAsync(body);
+      handleRegisterAsync(body).catch((err) => console.error("register handler failed:", err));
       return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
     }
 
     if (commandName === "unregister") {
-      handleUnregisterAsync(body);
+      handleUnregisterAsync(body).catch((err) => console.error("unregister handler failed:", err));
       return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
     }
 
     if (commandName === "whoami") {
-      handleWhoamiAsync(body);
+      handleWhoamiAsync(body).catch((err) => console.error("whoami handler failed:", err));
       return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
     }
 
     if (commandName === "generate") {
-      handleGenerate(body);
+      handleGenerate(body).catch((err) => console.error("generate handler failed:", err));
     } else if (commandName === "pick") {
-      handlePick(body);
+      handlePick(body).catch((err) => console.error("pick handler failed:", err));
     } else if (commandName === "improve") {
-      handleImprove(body);
+      handleImprove(body).catch((err) => console.error("improve handler failed:", err));
     }
 
     // Return deferred response immediately (under 3s deadline)
