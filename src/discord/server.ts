@@ -46,11 +46,9 @@ export async function verifySignature(
   );
 }
 
-export function buildApp() {
-  const credentialStore = createCredentialStore();
-  
-  const deps: CommandDeps = {
-    credentialStore,
+function buildDeps(): CommandDeps {
+  return {
+    credentialStore: createCredentialStore(),
     discord: makeDiscordMessenger(config.discordApplicationId, config.discordToken),
     wordpress: {
       resolvePostId,
@@ -67,8 +65,10 @@ export function buildApp() {
     outputDir: OUTPUT_DIR,
     downloadImage: makeImageDownloader(),
   };
+}
 
-  const { handleInteraction } = makeCommandHandler(deps);
+export function buildApp(deps?: CommandDeps) {
+  const { handleInteraction } = makeCommandHandler(deps ?? buildDeps());
 
   const app = Fastify({ logger: true });
 
