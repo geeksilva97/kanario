@@ -20,6 +20,18 @@ Once you've picked a favorite, the `pick` subcommand uploads it to WordPress and
 
 Kanario ships with an example mascot config. See [Customizing or removing the mascot](docs/custom-mascot.md) to use your own images or disable it entirely.
 
+## Table of Contents
+
+- [Setup](#setup)
+- [Usage](#usage)
+  - [Generate thumbnails](#generate-thumbnails)
+  - [Improve an existing image](#improve-an-existing-image)
+  - [Pick & upload featured image](#pick--upload-featured-image)
+- [Discord Bot](#discord-bot)
+- [Tests](#tests)
+- [Documentation](#documentation)
+- [Stack](#stack)
+
 ## Setup
 
 ```bash
