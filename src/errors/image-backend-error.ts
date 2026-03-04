@@ -55,6 +55,14 @@ export class ImageBackendError extends KanarioError<ImageBackendErrorMeta> {
     );
   }
 
+  static runpodPollingTimeout(jobId: string, attempts: number) {
+    return new ImageBackendError(
+      "runpod_polling_timeout",
+      `RunPod job ${jobId} did not complete after ${attempts} poll attempts`,
+      { jobId, retries: attempts },
+    );
+  }
+
   static unreadableMascot(mascotPath: string) {
     return new ImageBackendError(
       "unreadable_mascot",

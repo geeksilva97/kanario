@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { DISCORD_API_BASE } from "../config.ts";
-import { createHttpClient } from "../http.ts";
+import { createHttpClient, type HttpRequestInit } from "../http.ts";
+import { HttpError } from "../errors/index.ts";
 import type { DiscordMessenger } from "./command-deps.ts";
 
 export function makeDiscordMessenger(applicationId: string, botToken: string): DiscordMessenger {
@@ -9,13 +10,28 @@ export function makeDiscordMessenger(applicationId: string, botToken: string): D
     headers: { Authorization: `Bot ${botToken}` },
   });
 
+  async function patchWithRetry(path: string, init: HttpRequestInit): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await http.request(path, { method: "PATCH", ...init });
+        return;
+      } catch (err) {
+        if (HttpError.is(err) && err.meta.status === 429) {
+          const retryAfter: number = JSON.parse(err.meta.body).retry_after ?? 1;
+          await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
   return {
     async editOriginalMessage(token, content, files?) {
       const path = `/webhooks/${applicationId}/${token}/messages/@original`;
 
       if (!files || files.length === 0) {
-        await http.request(path, {
-          method: "PATCH",
+        await patchWithRetry(path, {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
         });
@@ -52,8 +68,7 @@ export function makeDiscordMessenger(applicationId: string, botToken: string): D
 
       parts.push(Buffer.from(`--${boundary}--\r\n`));
 
-      await http.request(path, {
-        method: "PATCH",
+      await patchWithRetry(path, {
         headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
         body: Buffer.concat(parts),
       });

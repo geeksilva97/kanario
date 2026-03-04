@@ -34,6 +34,7 @@ function getHint(err: KanarioError): string | null {
 
   if (err instanceof ImageBackendError) {
     if (err.type === "retries_exhausted") return "Vertex AI is rate-limiting. Wait a few minutes or switch to --image-model qwen.";
+    if (err.type === "runpod_polling_timeout") return "RunPod job timed out. The service may be overloaded — try again in a few minutes.";
     return null;
   }
 

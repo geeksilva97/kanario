@@ -12,7 +12,7 @@ Given a post ID (or URL), the CLI:
 
 1. Fetches the draft from WordPress REST API
 2. Summarizes the full post content via a fast LLM (Gemini Flash or Claude Haiku) to extract key points
-3. Sends the summary to an LLM (Gemini by default, or Claude), which generates scene descriptions — the LLM decides per scene whether a mascot character fits or if a scene-only diorama works better
+3. Sends the summary to an LLM (Gemini by default, or Claude), which generates scene descriptions — the LLM decides per scene whether a mascot character fits or if a scene-only diorama works better (Gemini RESOURCE_EXHAUSTED errors automatically fall back to Claude Sonnet)
 4. Submits image jobs (1 per prompt) to Qwen Image Edit on RunPod
 5. Saves everything to `output/<post-id>/`
 
@@ -187,7 +187,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 All commands use deferred responses (Discord's 3s deadline). `/help`, `/register`, `/unregister`, and `/whoami` are ephemeral (only visible to you). `/generate`, `/improve`, and `/pick` results are visible to the channel.
 
-`/generate` and `/improve` show live progress updates in the deferred message while images are being generated. Each workflow step replaces the message content with an accumulated log inside a code block. The final message with attached images replaces the progress log.
+`/generate` and `/improve` show live progress updates in the deferred message while images are being generated. Each workflow step replaces the message content with an accumulated log inside a code block. The final message with attached images replaces the progress log. Progress edits are fire-and-forget; Discord 429 rate limits are retried automatically (up to 3 attempts, honouring `retry_after`).
 
 ### Health check
 
@@ -288,7 +288,7 @@ There are two modes:
 Our workflow (async):
 
 1. **Submit a job** — `POST /run` returns a job ID
-2. **Poll for status** — `GET /status/{id}` until `COMPLETED`
+2. **Poll for status** — `GET /status/{id}` until `COMPLETED` (max 100 attempts / ~5 min; times out with `runpod_polling_timeout` error)
 3. **Download the image** — result is a CloudFront URL in `output.result`
 
 ### API reference

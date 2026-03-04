@@ -6,6 +6,7 @@ import type { ImageBackend } from "./image-backend.ts";
 import { HttpError, ImageBackendError } from "./errors/index.ts";
 
 const POLL_INTERVAL_MS = 3_000;
+const MAX_POLL_ATTEMPTS = 100; // 5 minutes
 
 interface RunPodStatus {
   status: "COMPLETED" | "FAILED" | "IN_QUEUE" | "IN_PROGRESS";
@@ -19,11 +20,12 @@ export function createRunpodClient(): HttpClient {
       Authorization: `Bearer ${config.runpodApiKey}`,
       "Content-Type": "application/json",
     },
+    timeout: 30_000,
   });
 }
 
 async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<RunPodStatus> {
-  while (true) {
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
     let res: Response;
     try {
       res = await http.request(`/status/${jobId}`);
@@ -46,6 +48,8 @@ async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<RunP
 
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
+
+  throw ImageBackendError.runpodPollingTimeout(jobId, MAX_POLL_ATTEMPTS);
 }
 
 export function createQwenBackend(http: HttpClient): ImageBackend {

@@ -212,7 +212,7 @@ export function makeCommandHandler(deps: CommandDeps) {
       const onProgress = (msg: string) => {
         const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
         progress += msg + "\n";
-        discord.editOriginalMessage(token, `${mention} ${clock} Generating thumbnails...\n\`\`\`\n${progress}\`\`\``);
+        discord.editOriginalMessage(token, `${mention} ${clock} Generating thumbnails...\n\`\`\`\n${progress}\`\`\``).catch((err) => console.error("Failed to update progress message:", err));
       };
 
       const result = await workflows.generate(
