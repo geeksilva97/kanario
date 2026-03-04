@@ -4,6 +4,7 @@ import {
   type PromptResult,
   SYSTEM_PROMPT,
   mapRawPrompts,
+  generatePrompts as claudeGeneratePrompts,
 } from "./prompt-generator.ts";
 import {
   SCHEMA_DESCRIPTIONS,
@@ -49,26 +50,44 @@ const promptSchema = {
   required: ["prompts"],
 };
 
+function isGeminiRateLimit(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  try {
+    const parsed = JSON.parse(err.message);
+    return parsed?.error?.code === 429 || parsed?.error?.status === "RESOURCE_EXHAUSTED";
+  } catch {
+    return false;
+  }
+}
+
 export async function generatePrompts(post: WPPost, hint?: string): Promise<PromptResult> {
   const ai = new GoogleGenAI({
     vertexai: true,
     apiKey: config.geminiApiKey,
   });
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-pro-preview",
-    contents: buildUserMessage(post, hint),
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: "application/json",
-      responseSchema: promptSchema,
-    },
-  });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: buildUserMessage(post, hint),
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: "application/json",
+        responseSchema: promptSchema,
+      },
+    });
 
-  // JSON.parse returns unknown — shape is guaranteed by responseSchema above
-  const raw = JSON.parse(sanitizeJsonResponse(response.text!)) as {
-    prompts: RawPrompt[];
-  };
+    // JSON.parse returns unknown — shape is guaranteed by responseSchema above
+    const raw = JSON.parse(sanitizeJsonResponse(response.text!)) as {
+      prompts: RawPrompt[];
+    };
 
-  return { prompts: mapRawPrompts(raw) };
+    return { prompts: mapRawPrompts(raw) };
+  } catch (err) {
+    if (isGeminiRateLimit(err)) {
+      console.warn("Gemini rate limit hit, falling back to Claude Sonnet ...");
+      return claudeGeneratePrompts(post, hint);
+    }
+    throw err;
+  }
 }
