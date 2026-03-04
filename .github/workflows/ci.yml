@@ -122,7 +122,7 @@ jobs:
             --cpu 1 \
             --timeout 300 \
             --no-cpu-throttling \
-            --min-instances 0 \
+            --min-instances 1 \
             --max-instances 3 \
             --add-volume name=creds-vol,type=cloud-storage,bucket=kanario-credentials \
             --add-volume-mount volume=creds-vol,mount-path=/app/data
