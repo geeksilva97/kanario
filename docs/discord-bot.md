@@ -69,7 +69,7 @@ All commands use deferred responses (Discord's 3s deadline). `/help`, `/register
 GET /health → { "status": "ok" }
 ```
 
-Used by Cloud Scheduler to keep the service warm (pings every 5 minutes to prevent cold starts, which exceed Discord's 3s deadline).
+Used by uptime monitors or load balancers to verify the service is running.
 
 ## Running locally
 

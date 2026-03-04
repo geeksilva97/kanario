@@ -34,7 +34,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --cpu 1 \
   --timeout 300 \
   --no-cpu-throttling \
-  --min-instances 0 \
+  --min-instances 1 \
   --max-instances 3 \
   --add-volume name=creds-vol,type=cloud-storage,bucket=kanario-credentials \
   --add-volume-mount volume=creds-vol,mount-path=/app/data
@@ -46,22 +46,3 @@ SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
 
 echo ""
 echo "Service URL: $SERVICE_URL"
-
-# Create or update keep-alive scheduler job (prevents cold starts exceeding Discord's 3s deadline)
-echo "Setting up keep-alive scheduler ..."
-gcloud scheduler jobs update http kanario-keep-alive \
-  --location "$REGION" \
-  --project "$PROJECT_ID" \
-  --schedule "*/5 * * * *" \
-  --uri "${SERVICE_URL}/health" \
-  --http-method GET \
-  --attempt-deadline 15s \
-  --quiet 2>/dev/null \
-|| gcloud scheduler jobs create http kanario-keep-alive \
-  --location "$REGION" \
-  --project "$PROJECT_ID" \
-  --schedule "*/5 * * * *" \
-  --uri "${SERVICE_URL}/health" \
-  --http-method GET \
-  --attempt-deadline 15s \
-  --quiet

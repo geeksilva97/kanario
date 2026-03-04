@@ -70,7 +70,7 @@ Discord will send a PING to verify the endpoint responds with PONG before saving
 | CPU | 1 |
 | CPU throttling | Off (background work runs after the deferred response) |
 | Timeout | 300s |
-| Min instances | 0 (kept warm by Cloud Scheduler pinging `/health` every 5 min) |
+| Min instances | 1 (always-on — prevents cold starts that exceed Discord's 3s deadline) |
 | Max instances | 3 |
 | Port | 8080 |
 
