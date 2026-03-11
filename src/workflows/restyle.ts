@@ -76,7 +76,7 @@ export async function restyleWorkflow(
       prompt: fullPrompt,
       mascotPath: sourceImagePath,
       outputDir,
-      filename: "restyle-1.png",
+      filename: "prompt-1.png",
       seed: -1,
       wide,
       onProgress: log,
