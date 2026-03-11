@@ -1,4 +1,5 @@
 import path from "node:path";
+import sharp from "sharp";
 import type { WPCredentials } from "../credentials.ts";
 import type { CommandDeps } from "./command-deps.ts";
 import { formatError } from "../errors/error-reporter.ts";
@@ -99,6 +100,38 @@ export const COMMAND_DEFINITIONS = [
     ],
   },
   {
+    name: "restyle",
+    description: "Transform an image into Kanario's isometric 3D Pixar style",
+    options: [
+      {
+        name: "image",
+        description: "Image URL to restyle",
+        type: 3, // STRING
+        required: true,
+      },
+      {
+        name: "hint",
+        description: "Guide what to emphasize",
+        type: 3, // STRING
+      },
+      {
+        name: "background",
+        description: "Background color",
+        type: 3, // STRING
+        choices: [
+          { name: "White (default)", value: "white" },
+          { name: "Cream", value: "cream" },
+          { name: "Mint", value: "mint" },
+          { name: "Sky", value: "sky" },
+          { name: "Slate", value: "slate" },
+          { name: "Forest", value: "forest" },
+          { name: "Navy", value: "navy" },
+          { name: "Plum", value: "plum" },
+        ],
+      },
+    ],
+  },
+  {
     name: "register",
     description: "Register your WordPress credentials (use in DMs for security)",
     options: [
@@ -152,6 +185,7 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 \`/whoami\` — Check your registered credentials
 \`/generate post_id [model] [hint]\` — Generate 5 thumbnail options
 \`/improve post_id image prompt\` — Iterate on an existing image
+\`/restyle image [hint] [background]\` — Transform any image into Kanario style
 \`/pick post_id image\` — Upload an image and set it as featured
 \`/help\` — Show this message
 
@@ -326,6 +360,51 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
   }
 
+  async function handleRestyle(interaction: DiscordInteraction) {
+    const token = interaction.token;
+    const mention = getUserMention(interaction);
+    const imageUrl = getOptionValue(interaction, "image") || "";
+    const hint = getOptionValue(interaction, "hint");
+    const background = getOptionValue(interaction, "background");
+
+    let downloaded: { path: string; cleanup: () => void } | undefined;
+
+    try {
+      downloaded = await downloadImage(imageUrl);
+
+      // Validate it's a real image
+      const metadata = await sharp(downloaded.path).metadata();
+      if (!metadata.width || !metadata.height) {
+        await discord.editOriginalMessage(token, `${mention} The URL does not point to a valid image.`);
+        return;
+      }
+
+      let progress = "";
+      let step = 0;
+      const onProgress = (msg: string) => {
+        const clock = CLOCK_SPINNER[step++ % CLOCK_SPINNER.length];
+        progress += msg + "\n";
+        discord.editOriginalMessage(token, `${mention} ${clock} Restyling image...\n\`\`\`\n${progress}\`\`\``).catch((err) => console.error("Failed to update progress message:", err));
+      };
+
+      const result = await workflows.restyle(
+        { sourceImagePath: downloaded.path, wide: true, hint, background },
+        onProgress,
+      );
+
+      const content = `${mention} Restyled image:`;
+      const files = [{ name: "restyle.png", path: result.imagePath }];
+
+      await discord.editOriginalMessage(token, content, files);
+    } catch (err) {
+      await discord.editOriginalMessage(token, `${mention} Restyle failed: ${formatError(err)}`);
+    } finally {
+      if (downloaded) {
+        downloaded.cleanup();
+      }
+    }
+  }
+
   async function handleRegisterAsync(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
@@ -433,6 +512,8 @@ export function makeCommandHandler(deps: CommandDeps) {
       handlePick(body).catch((err) => console.error("pick handler failed:", err));
     } else if (commandName === "improve") {
       handleImprove(body).catch((err) => console.error("improve handler failed:", err));
+    } else if (commandName === "restyle") {
+      handleRestyle(body).catch((err) => console.error("restyle handler failed:", err));
     }
 
     // Return deferred response immediately (under 3s deadline)

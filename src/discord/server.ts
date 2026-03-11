@@ -6,6 +6,7 @@ import { resolvePostId, fetchDraft } from "../wordpress.ts";
 import { generateWorkflow } from "../workflows/generate.ts";
 import { improveWorkflow } from "../workflows/improve.ts";
 import { pickWorkflow } from "../workflows/pick.ts";
+import { restyleWorkflow } from "../workflows/restyle.ts";
 import { resolveImagePath } from "../commands/pick.ts";
 import { makeCommandHandler } from "./commands.ts";
 import { makeDiscordMessenger } from "./discord-messenger.ts";
@@ -59,6 +60,7 @@ function buildDeps(): CommandDeps {
       generate: generateWorkflow,
       improve: improveWorkflow,
       pick: pickWorkflow,
+      restyle: restyleWorkflow,
     },
     createWpClient,
     resolveImagePath,

@@ -50,6 +50,10 @@ function makeMockDeps(): CommandDeps & { _calls: Record<string, unknown[][]> } {
         outputDir: "/tmp/output",
       })),
       pick: track("workflows.pick", async () => ({ mediaId: 42 })),
+      restyle: track("workflows.restyle", async () => ({
+        imagePath: "/tmp/restyle-1.png",
+        outputDir: "/tmp/output",
+      })),
     },
     createWpClient: track("createWpClient", () => fakeHttp),
     resolveImagePath: track("resolveImagePath", () => "/tmp/prompt-1.png"),
@@ -90,10 +94,10 @@ function loadWithCreds(deps: { _calls: Record<string, unknown[][]> }) {
 }
 
 describe("COMMAND_DEFINITIONS", () => {
-  it("exports 7 slash commands", () => {
-    assert.equal(COMMAND_DEFINITIONS.length, 7);
+  it("exports 8 slash commands", () => {
+    assert.equal(COMMAND_DEFINITIONS.length, 8);
     const names = COMMAND_DEFINITIONS.map((c) => c.name);
-    assert.deepEqual(names, ["generate", "pick", "improve", "register", "unregister", "whoami", "help"]);
+    assert.deepEqual(names, ["generate", "pick", "improve", "restyle", "register", "unregister", "whoami", "help"]);
   });
 });
 

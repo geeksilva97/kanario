@@ -86,10 +86,10 @@ Examples:
 ### Restyle an image
 
 ```bash
-./kanario restyle <image-path> [--hint <text>] [--background <color>] [--model gemini|claude]
+./kanario restyle <image-path-or-url> [--hint <text>] [--background <color>]
 ```
 
-Transforms any image (photo, diagram, screenshot) into Kanario's isometric 3D Pixar-style diorama. The source image is sent directly to Qwen Image Edit as a reference, with a style prompt that instructs it to recreate the scene as a miniature diorama.
+Transforms any image (photo, diagram, screenshot) into Kanario's isometric 3D Pixar-style diorama. Accepts a local file path or a URL. The source image is sent directly to Qwen Image Edit as a reference, with a style prompt that instructs it to recreate the scene as a miniature diorama.
 
 | Flag | Description |
 |---|---|
@@ -100,7 +100,8 @@ Transforms any image (photo, diagram, screenshot) into Kanario's isometric 3D Pi
 
 ```bash
 ./kanario restyle photo.jpg
-./kanario restyle screenshot.png --hint "focus on the code editor" --background sky
+./kanario restyle https://example.com/image.png --background sky
+./kanario restyle screenshot.png --hint "focus on the code editor"
 ```
 
 ### Improve an existing image
@@ -115,6 +116,28 @@ Iterates on an existing generated image. `<image>` accepts a shorthand like `2` 
 ./kanario improve 12487 2 --prompt "make the background darker"
 ./kanario improve 12487 3 --prompt "remove the robot and add more plants"
 ```
+
+#### Refining restyled images
+
+Use `improve` to make targeted edits to a restyled image. Pass the full path to the restyled image:
+
+```bash
+# Restyle an image
+./kanario restyle photo.jpg
+# → output/restyle-2026-03-11T01-19-54/restyle-1.png
+
+# Change the background color
+./kanario improve restyle-2026-03-11T01-19-54 output/restyle-2026-03-11T01-19-54/restyle-1.png \
+  --prompt "Change the white background to soft sky blue. Keep everything else the same."
+# → prompt-1.png
+
+# Fix text contrast on the result
+./kanario improve restyle-2026-03-11T01-19-54 1 \
+  --prompt "Change the text color to #2C3E50 midnight blue. Keep everything else the same."
+# → prompt-2.png
+```
+
+After the first `improve`, subsequent iterations can use the shorthand (`1`, `2`, etc.) since improve outputs `prompt-N.png`.
 
 ### Pick & upload featured image
 
@@ -152,6 +175,7 @@ The same workflows are available as Discord slash commands. Each user registers 
 | `/whoami` | Show your registered URL and username |
 | `/generate post_id [model] [hint]` | Generate thumbnails for a post |
 | `/improve post_id image prompt` | Iterate on a generated image |
+| `/restyle image [hint] [background]` | Transform any image into Kanario style |
 | `/pick post_id image` | Upload and set as featured image |
 
 See [docs/discord-bot.md](docs/discord-bot.md) for full setup instructions.

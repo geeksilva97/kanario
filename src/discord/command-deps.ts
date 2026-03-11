@@ -3,6 +3,7 @@ import type { WPCredentials } from "../credentials.ts";
 import type { GenerateOptions, GenerateResult } from "../workflows/generate.ts";
 import type { ImproveOptions, ImproveResult } from "../workflows/improve.ts";
 import type { PickOptions, PickResult } from "../workflows/pick.ts";
+import type { RestyleOptions, RestyleResult } from "../workflows/restyle.ts";
 
 export interface CredentialStore {
   load(userId: string): WPCredentials | null;
@@ -25,6 +26,7 @@ export interface Workflows {
   generate(opts: GenerateOptions, onProgress?: (msg: string) => void): Promise<GenerateResult>;
   improve(opts: ImproveOptions, onProgress?: (msg: string) => void): Promise<ImproveResult>;
   pick(opts: PickOptions): Promise<PickResult>;
+  restyle(opts: RestyleOptions, onProgress?: (msg: string) => void): Promise<RestyleResult>;
 }
 
 export interface CommandDeps {

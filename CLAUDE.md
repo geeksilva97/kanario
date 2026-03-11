@@ -71,11 +71,13 @@ src/
 ├── commands/
 │   ├── generate.ts           # CLI generate command handler
 │   ├── improve.ts            # CLI improve command handler
-│   └── pick.ts               # CLI pick command handler
+│   ├── pick.ts               # CLI pick command handler
+│   └── restyle.ts            # CLI restyle command handler (URL download, image validation)
 ├── workflows/
 │   ├── generate.ts           # Core generate workflow (shared by CLI + Discord)
 │   ├── improve.ts            # Core improve workflow (shared by CLI + Discord)
-│   └── pick.ts               # Core pick workflow (shared by CLI + Discord)
+│   ├── pick.ts               # Core pick workflow (shared by CLI + Discord)
+│   └── restyle.ts            # Core restyle workflow (shared by CLI + Discord)
 └── discord/
     ├── command-deps.ts       # Dependency interfaces (CredentialStore, DiscordMessenger, WordPressClient, Workflows, CommandDeps)
     ├── commands.ts           # makeCommandHandler(deps) factory + COMMAND_DEFINITIONS + HELP_TEXT
