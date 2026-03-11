@@ -81,6 +81,7 @@ export async function restyle(
     );
 
     console.log(`\nDone! Restyled image saved to ${result.outputDir}`);
+    console.log(`  ID: ${result.id}  (use with improve: ./kanario improve ${result.id} ...)`);
 
     const { execSync } = await import("node:child_process");
     execSync(`open ${result.outputDir}`);

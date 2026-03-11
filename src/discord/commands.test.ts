@@ -51,6 +51,7 @@ function makeMockDeps(): CommandDeps & { _calls: Record<string, unknown[][]> } {
       })),
       pick: track("workflows.pick", async () => ({ mediaId: 42 })),
       restyle: track("workflows.restyle", async () => ({
+        id: "abc12345",
         imagePath: "/tmp/restyle-1.png",
         outputDir: "/tmp/output",
       })),

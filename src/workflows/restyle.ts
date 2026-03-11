@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { config, OUTPUT_DIR, RESTYLE_TEMPLATE, BACKGROUND_COLORS } from "../config.ts";
@@ -17,6 +18,7 @@ export interface RestyleOptions {
 }
 
 export interface RestyleResult {
+  id: string;
   imagePath: string;
   outputDir: string;
 }
@@ -66,8 +68,8 @@ export async function restyleWorkflow(
 
   // Step 2: Generate restyled image
   log(`[2/2] Generating restyled image via Qwen ...`);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, `restyle-${timestamp}`);
+  const id = crypto.randomUUID().slice(0, 8);
+  const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, id);
 
   const imagePath = await generateSingleImage(
     {
@@ -82,5 +84,5 @@ export async function restyleWorkflow(
     backend,
   );
 
-  return { imagePath, outputDir };
+  return { id, imagePath, outputDir };
 }

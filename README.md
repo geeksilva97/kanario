@@ -119,25 +119,23 @@ Iterates on an existing generated image. `<image>` accepts a shorthand like `2` 
 
 #### Refining restyled images
 
-Use `improve` to make targeted edits to a restyled image. Pass the full path to the restyled image:
+Use `improve` to make targeted edits to a restyled image. Restyle outputs a short ID you can use directly:
 
 ```bash
 # Restyle an image
 ./kanario restyle photo.jpg
-# → output/restyle-2026-03-11T01-19-54/restyle-1.png
+#   ID: a3f7c912  (use with improve: ./kanario improve a3f7c912 ...)
 
-# Change the background color
-./kanario improve restyle-2026-03-11T01-19-54 output/restyle-2026-03-11T01-19-54/restyle-1.png \
+# Change the background color (pass full path for the first improve)
+./kanario improve a3f7c912 output/a3f7c912/restyle-1.png \
   --prompt "Change the white background to soft sky blue. Keep everything else the same."
 # → prompt-1.png
 
-# Fix text contrast on the result
-./kanario improve restyle-2026-03-11T01-19-54 1 \
+# Fix text contrast on the result (shorthand works from here)
+./kanario improve a3f7c912 1 \
   --prompt "Change the text color to #2C3E50 midnight blue. Keep everything else the same."
 # → prompt-2.png
 ```
-
-After the first `improve`, subsequent iterations can use the shorthand (`1`, `2`, etc.) since improve outputs `prompt-N.png`.
 
 ### Pick & upload featured image
 
