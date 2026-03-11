@@ -143,10 +143,11 @@ Use `improve` to make targeted edits to a restyled image. Restyle outputs a shor
 ./kanario pick <post-id-or-url> <image>
 ```
 
-Shows the post title and image path, then asks for confirmation before uploading. `<image>` accepts a shorthand like `2` or a full file path.
+Shows the post title and image path, then asks for confirmation before uploading. `<image>` accepts a shorthand like `2`, a cross-ID reference like `a3f7c912/1` (useful for restyle output), or a full file path.
 
 ```bash
 ./kanario pick 12487 2
+./kanario pick 12487 a3f7c912/1    # use restyled image from another output folder
 ./kanario pick 12487 /path/to/custom.png
 ```
 

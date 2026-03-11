@@ -7,8 +7,14 @@ import { pickWorkflow } from "../workflows/pick.ts";
 import { formatError } from "../errors/error-reporter.ts";
 
 export function resolveImagePath(postId: string, imageArg: string): string {
+  // Shorthand: "2" → output/<postId>/prompt-2.png
   if (/^\d+[a-z]?$/.test(imageArg)) {
     return path.join(OUTPUT_DIR, postId, `prompt-${imageArg}.png`);
+  }
+  // Cross-ID reference: "a3f7c912/1" → output/a3f7c912/prompt-1.png
+  const crossRef = imageArg.match(/^([a-f0-9-]+)\/(\d+)$/);
+  if (crossRef) {
+    return path.join(OUTPUT_DIR, crossRef[1], `prompt-${crossRef[2]}.png`);
   }
   return path.resolve(imageArg);
 }
