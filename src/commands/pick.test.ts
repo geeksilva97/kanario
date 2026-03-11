@@ -30,13 +30,4 @@ describe("resolveImagePath", () => {
     assert.equal(result, path.resolve("some/image.png"));
   });
 
-  it("resolves cross-ID reference to output directory", () => {
-    const result = resolveImagePath("12518", "a3f7c912/1");
-    assert.equal(result, path.join(OUTPUT_DIR, "a3f7c912", "prompt-1.png"));
-  });
-
-  it("resolves cross-ID reference with full UUID", () => {
-    const result = resolveImagePath("12518", "4b374189/2");
-    assert.equal(result, path.join(OUTPUT_DIR, "4b374189", "prompt-2.png"));
-  });
 });

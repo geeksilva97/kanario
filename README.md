@@ -143,11 +143,10 @@ Use `improve` to make targeted edits to a restyled image. Restyle outputs a shor
 ./kanario pick <post-id-or-url> <image>
 ```
 
-Shows the post title and image path, then asks for confirmation before uploading. `<image>` accepts a shorthand like `2`, a cross-ID reference like `a3f7c912/1` (useful for restyle output), an image URL, or a full file path. URLs are downloaded to a temp file before uploading.
+Shows the post title and image path, then asks for confirmation before uploading. `<image>` accepts a shorthand like `2`, an image URL, or a full file path. URLs are downloaded to a temp file before uploading.
 
 ```bash
 ./kanario pick 12487 2
-./kanario pick 12487 a3f7c912/1    # use restyled image from another output folder
 ./kanario pick 12487 https://cdn.discord.com/attachments/.../image.png
 ./kanario pick 12487 /path/to/custom.png
 ```

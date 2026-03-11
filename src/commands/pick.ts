@@ -18,11 +18,6 @@ export function resolveImagePath(postId: string, imageArg: string): string {
   if (/^\d+[a-z]?$/.test(imageArg)) {
     return path.join(OUTPUT_DIR, postId, `prompt-${imageArg}.png`);
   }
-  // Cross-ID reference: "a3f7c912/1" → output/a3f7c912/prompt-1.png
-  const crossRef = imageArg.match(/^([a-f0-9-]+)\/(\d+)$/);
-  if (crossRef) {
-    return path.join(OUTPUT_DIR, crossRef[1], `prompt-${crossRef[2]}.png`);
-  }
   return path.resolve(imageArg);
 }
 
@@ -42,7 +37,7 @@ export async function pick(positionals: string[]) {
 
   if (!rawPostId || !imageArg) {
     console.error("Usage: ./kanario pick <post-id-or-url> <image>");
-    console.error('  <image> can be a shorthand like "2", cross-ID ref like "a3f7c912/1", URL, or file path');
+    console.error('  <image> can be a shorthand like "2", an image URL, or a file path');
     process.exit(1);
   }
 

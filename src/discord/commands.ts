@@ -69,7 +69,7 @@ export const COMMAND_DEFINITIONS = [
       },
       {
         name: "image",
-        description: 'Image number (e.g. "2"), cross-ID ref, or URL',
+        description: 'Image number (e.g. "2") or URL',
         type: 3, // STRING
         required: true,
       },
