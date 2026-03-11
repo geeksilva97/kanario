@@ -15,6 +15,11 @@ describe("resolveImagePath", () => {
     assert.equal(result, path.join(OUTPUT_DIR, "12518", "prompt-2a.png"));
   });
 
+  it("returns URL as-is", () => {
+    const result = resolveImagePath("12518", "https://cdn.example.com/image.png");
+    assert.equal(result, "https://cdn.example.com/image.png");
+  });
+
   it("returns absolute path as-is", () => {
     const result = resolveImagePath("12518", "/tmp/custom.png");
     assert.equal(result, "/tmp/custom.png");

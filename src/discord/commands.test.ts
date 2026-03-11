@@ -353,6 +353,36 @@ describe("/pick", () => {
     assert.ok(msg.includes("Media ID: 42"));
   });
 
+  it("downloads image from URL", async () => {
+    const deps = makeMockDeps();
+    deps.credentialStore.load = loadWithCreds(deps);
+    const { handleInteraction } = makeCommandHandler(deps);
+
+    handleInteraction(makeInteraction("pick", { post_id: "456", image: "https://cdn.example.com/photo.png" }));
+    await tick();
+
+    assert.equal(deps._calls["downloadImage"].length, 1);
+    assert.equal(deps._calls["downloadImage"][0][0], "https://cdn.example.com/photo.png");
+    assert.equal(deps._calls["resolveImagePath"].length, 0);
+    assert.equal(deps._calls["workflows.pick"].length, 1);
+  });
+
+  it("calls cleanup after URL download", async () => {
+    let cleanupCalled = false;
+    const deps = makeMockDeps();
+    deps.credentialStore.load = loadWithCreds(deps);
+    deps.downloadImage = async () => ({
+      path: "/tmp/dl.png",
+      cleanup: () => { cleanupCalled = true; },
+    });
+    const { handleInteraction } = makeCommandHandler(deps);
+
+    handleInteraction(makeInteraction("pick", { post_id: "456", image: "https://cdn.example.com/photo.png" }));
+    await tick();
+
+    assert.ok(cleanupCalled);
+  });
+
   it("reports pick failure", async () => {
     const deps = makeMockDeps();
     deps.credentialStore.load = loadWithCreds(deps);
@@ -365,6 +395,23 @@ describe("/pick", () => {
     const msg = lastEditMsg(deps);
     assert.ok(msg.includes("Pick failed"));
     assert.ok(msg.includes("Upload failed"));
+  });
+
+  it("calls cleanup even on failure when URL was downloaded", async () => {
+    let cleanupCalled = false;
+    const deps = makeMockDeps();
+    deps.credentialStore.load = loadWithCreds(deps);
+    deps.downloadImage = async () => ({
+      path: "/tmp/dl.png",
+      cleanup: () => { cleanupCalled = true; },
+    });
+    deps.workflows.pick = async () => { throw new Error("fail"); };
+    const { handleInteraction } = makeCommandHandler(deps);
+
+    handleInteraction(makeInteraction("pick", { post_id: "456", image: "https://cdn.example.com/photo.png" }));
+    await tick();
+
+    assert.ok(cleanupCalled);
   });
 });
 

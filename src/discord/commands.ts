@@ -69,7 +69,7 @@ export const COMMAND_DEFINITIONS = [
       },
       {
         name: "image",
-        description: 'Image shorthand (e.g. "2") or full file path',
+        description: 'Image number (e.g. "2"), cross-ID ref, or URL',
         type: 3, // STRING
         required: true,
       },
@@ -287,10 +287,20 @@ export function makeCommandHandler(deps: CommandDeps) {
       return;
     }
 
+    let downloaded: { path: string; cleanup: () => void } | undefined;
+
     try {
       const wpHttp = createWpClient(creds);
       const postId = await wordpress.resolvePostId(wpHttp, rawPostId);
-      const imagePath = resolveImagePath(postId, imageArg);
+      let imagePath: string;
+
+      if (/^https?:\/\//.test(imageArg)) {
+        downloaded = await downloadImage(imageArg);
+        imagePath = downloaded.path;
+      } else {
+        imagePath = resolveImagePath(postId, imageArg);
+      }
+
       const post = await wordpress.fetchDraft(wpHttp, postId);
 
       const result = await workflows.pick({ wpHttp, postId, imagePath });
@@ -303,6 +313,8 @@ export function makeCommandHandler(deps: CommandDeps) {
     } catch (err) {
       const mention = getUserMention(interaction);
       await discord.editOriginalMessage(token, `${mention} Pick failed: ${formatError(err)}`);
+    } finally {
+      downloaded?.cleanup();
     }
   }
 
