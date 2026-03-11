@@ -147,3 +147,4 @@ src/
 - **Always run `npm test` and `npx tsc --noEmit`** after making changes to verify nothing is broken.
 - Never commit `.env` files or secrets.
 - **Commit headline never has "and"** — if you need "and", you're doing two things at once. Either separate into two commits or find a single headline that covers both.
+- **Always verify CI before confirming deploy** — when asked if deploy succeeded, run `gh run list --limit 1` and check the status. Never assume success without checking.
