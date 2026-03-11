@@ -5,6 +5,7 @@ const { values, positionals } = parseArgs({
   options: {
     hint: { type: "string" },
     prompt: { type: "string" },
+    background: { type: "string" },
     model: { type: "string", default: "gemini" },
     "image-model": { type: "string", default: "qwen" },
     output: { type: "string", short: "o" },
@@ -20,6 +21,7 @@ if (values.help || positionals.length === 0) {
   ./kanario <post-id-or-url> [options]       Generate thumbnails
   ./kanario pick <post-id-or-url> <image>    Upload & set featured image
   ./kanario improve <post-id> <image> --prompt "..."  Iterate on an existing image
+  ./kanario restyle <image-path> [options]   Transform an image into Kanario style
 
 Fetches a WordPress draft, generates thumbnail prompts via an LLM,
 and produces cover images via Qwen Image Edit on RunPod.
@@ -35,6 +37,7 @@ Options:
   --no-wide      Disable 16:9 padding, output matches mascot aspect ratio (square)
   --hint         Guide the visual metaphor (e.g. "two models competing side by side")
   --prompt       Improvement instructions for the improve command
+  --background   Background color for restyle: white, cream, mint, sky, slate, forest, navy, plum
   -h, --help     Show this help
 
 Examples:
@@ -44,11 +47,16 @@ Examples:
   ./kanario 12487 --hint "versus scene, two robots facing off"
   ./kanario pick 12487 2
   ./kanario pick 12487 /path/to/custom.png
-  ./kanario improve 12487 2 --prompt "make the background darker"`);
+  ./kanario improve 12487 2 --prompt "make the background darker"
+  ./kanario restyle photo.jpg
+  ./kanario restyle photo.jpg --hint "focus on the dashboard" --background cream`);
   process.exit(0);
 }
 
-if (positionals[0] === "pick") {
+if (positionals[0] === "restyle") {
+  const { restyle } = await import("./commands/restyle.ts");
+  await restyle(positionals, values);
+} else if (positionals[0] === "pick") {
   const { pick } = await import("./commands/pick.ts");
   await pick(positionals);
 } else if (positionals[0] === "improve") {

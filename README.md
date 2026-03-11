@@ -25,6 +25,7 @@ Kanario ships with an example mascot config. See [Customizing or removing the ma
 - [Setup](#setup)
 - [Usage](#usage)
   - [Generate thumbnails](#generate-thumbnails)
+  - [Restyle an image](#restyle-an-image)
   - [Improve an existing image](#improve-an-existing-image)
   - [Pick & upload featured image](#pick--upload-featured-image)
 - [Discord Bot](#discord-bot)
@@ -80,6 +81,26 @@ Examples:
 ./kanario 12487 --model claude
 ./kanario "https://your-wordpress-site.com/wp-admin/post.php?post=12487&action=edit"
 ./kanario "https://your-wordpress-site.com/some-post-slug/"
+```
+
+### Restyle an image
+
+```bash
+./kanario restyle <image-path> [--hint <text>] [--background <color>] [--model gemini|claude]
+```
+
+Transforms any image (photo, diagram, screenshot) into Kanario's isometric 3D Pixar-style diorama. The source image is sent directly to Qwen Image Edit as a reference, with a style prompt that instructs it to recreate the scene as a miniature diorama.
+
+| Flag | Description |
+|---|---|
+| `--hint` | Guide what to emphasize (e.g. `"focus on the dashboard"`) |
+| `--background` | Background color: `white` (default), `cream`, `mint`, `sky`, `slate`, `forest`, `navy`, `plum` |
+| `--no-wide` | Disable 16:9 padding |
+| `-o, --output` | Custom output directory (default: `output/restyle-<timestamp>`) |
+
+```bash
+./kanario restyle photo.jpg
+./kanario restyle screenshot.png --hint "focus on the code editor" --background sky
 ```
 
 ### Improve an existing image

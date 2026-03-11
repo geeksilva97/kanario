@@ -44,6 +44,7 @@ export type BackgroundId = keyof typeof BACKGROUND_COLORS;
 export const PROMPTS_DIR = path.join(PROJECT_ROOT, "prompts");
 
 export const PROMPT_TEMPLATE = fs.readFileSync(path.join(PROMPTS_DIR, "image-style.md"), "utf-8").trim();
+export const RESTYLE_TEMPLATE = fs.readFileSync(path.join(PROMPTS_DIR, "restyle-style.md"), "utf-8").trim();
 
 export const MODELS = {
   claudePrompt: "claude-sonnet-4-20250514",
