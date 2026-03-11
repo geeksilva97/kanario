@@ -392,7 +392,7 @@ export function makeCommandHandler(deps: CommandDeps) {
         onProgress,
       );
 
-      const content = `${mention} Restyled image:`;
+      const content = `${mention} Restyled image (ID: \`${result.id}\`):`;
       const files = [{ name: "restyle.png", path: result.imagePath }];
 
       await discord.editOriginalMessage(token, content, files);
