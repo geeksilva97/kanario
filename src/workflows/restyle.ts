@@ -1,12 +1,17 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import sharp from "sharp";
 import { config, OUTPUT_DIR, RESTYLE_TEMPLATE, BACKGROUND_COLORS } from "../config.ts";
 import { generateSingleImage, createImageBackend } from "../image-generator.ts";
 import { createRunpodClient } from "../qwen-backend.ts";
 import type { ImageModel } from "../image-backend.ts";
 import { FileError, ConfigError } from "../errors/index.ts";
 import { isBackgroundId } from "../utils/type-guards.ts";
+
+const CANVAS_WIDTH = 1280;
+const CANVAS_HEIGHT = 720;
 
 export interface RestyleOptions {
   sourceImagePath: string;
@@ -62,27 +67,39 @@ export async function restyleWorkflow(
   const backend = createImageBackend(imageModel, runpodHttp);
 
   // Step 1: Build restyle prompt
-  log(`[1/2] Building restyle prompt (background: ${background}) ...`);
+  log(`[1/3] Building restyle prompt (background: ${background}) ...`);
   const fullPrompt = buildRestylePrompt(hint, background);
   log(`  Prompt: ${fullPrompt.slice(0, 120)}...`);
 
-  // Step 2: Generate restyled image
-  log(`[2/2] Generating restyled image via Qwen ...`);
+  // Step 2: Pre-resize source image to fill the canvas (not 1/3 like mascots)
+  log(`[2/3] Resizing source image to fill canvas ...`);
+  const w = wide ? CANVAS_WIDTH : 1024;
+  const h = wide ? CANVAS_HEIGHT : 1024;
+  const resizedBuf = await sharp(sourceImagePath).resize(w, h, { fit: "cover" }).png().toBuffer();
+  const tempPath = path.join(os.tmpdir(), `kanario-restyle-canvas-${Date.now()}.png`);
+  fs.writeFileSync(tempPath, resizedBuf);
+
+  // Step 3: Generate restyled image (wide=false since we already sized the canvas)
+  log(`[3/3] Generating restyled image via Qwen ...`);
   const id = crypto.randomUUID().slice(0, 8);
   const outputDir = customOutputDir ? path.resolve(customOutputDir) : path.join(OUTPUT_DIR, id);
 
-  const imagePath = await generateSingleImage(
-    {
-      prompt: fullPrompt,
-      mascotPath: sourceImagePath,
-      outputDir,
-      filename: "prompt-1.png",
-      seed: -1,
-      wide,
-      onProgress: log,
-    },
-    backend,
-  );
+  try {
+    const imagePath = await generateSingleImage(
+      {
+        prompt: fullPrompt,
+        mascotPath: tempPath,
+        outputDir,
+        filename: "prompt-1.png",
+        seed: -1,
+        wide: false,
+        onProgress: log,
+      },
+      backend,
+    );
 
-  return { id, imagePath, outputDir };
+    return { id, imagePath, outputDir };
+  } finally {
+    try { fs.unlinkSync(tempPath); } catch {}
+  }
 }

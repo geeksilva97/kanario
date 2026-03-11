@@ -1,1 +1,1 @@
-Isometric 3D, Pixar-style, [BACKGROUND] background. Restyle the reference image preserving all elements.
+Redraw the reference image in a cute 3D Pixar-style render with soft lighting and [BACKGROUND] background. Keep the same composition, layout, and all visual elements — only change the art style.

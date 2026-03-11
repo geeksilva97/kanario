@@ -21,7 +21,7 @@ Iterate on an existing image with new instructions. Pass the image number from /
 - Example: \`/improve post_id: 12487 image: 2 prompt: "make the background darker"\`
 
 ### /restyle image [hint] [background]
-Transform any image into Kanario's isometric 3D Pixar style. Accepts an image URL.
+Transform any image into Kanario's 3D Pixar-style render. The source image is resized to fill the full canvas and Qwen redraws it preserving the same composition and layout — only the art style changes. Accepts an image URL.
 - \`background\`: white (default), cream, mint, sky, slate, forest, navy, plum
 - Does not require WordPress credentials
 

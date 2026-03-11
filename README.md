@@ -89,7 +89,7 @@ Examples:
 ./kanario restyle <image-path-or-url> [--hint <text>] [--background <color>]
 ```
 
-Transforms any image (photo, diagram, screenshot) into Kanario's isometric 3D Pixar-style diorama. Accepts a local file path or a URL. The source image is sent directly to Qwen Image Edit as a reference, with a style prompt that instructs it to recreate the scene as a miniature diorama.
+Transforms any image (photo, diagram, screenshot) into Kanario's 3D Pixar-style render. Accepts a local file path or a URL. The source image is resized to fill the full canvas (1280x720 for widescreen) and sent to Qwen Image Edit with a style prompt that instructs it to redraw the scene preserving the same composition and layout.
 
 | Flag | Description |
 |---|---|
