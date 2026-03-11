@@ -176,6 +176,7 @@ The same workflows are available as Discord slash commands. Each user registers 
 | `/improve post_id image prompt` | Iterate on a generated image |
 | `/restyle image [hint] [background]` | Transform any image into Kanario style |
 | `/pick post_id image` | Upload and set as featured image |
+| `/ask question` | Ask a question about how Kanario works |
 
 See [docs/discord-bot.md](docs/discord-bot.md) for full setup instructions.
 

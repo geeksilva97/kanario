@@ -164,6 +164,18 @@ export const COMMAND_DEFINITIONS = [
     description: "Show your registered WordPress credentials (no password)",
   },
   {
+    name: "ask",
+    description: "Ask a question about how Kanario works",
+    options: [
+      {
+        name: "question",
+        description: "Your question about Kanario",
+        type: 3, // STRING
+        required: true,
+      },
+    ],
+  },
+  {
     name: "help",
     description: "Learn how Kanario works",
   },
@@ -187,6 +199,7 @@ Fetches a WordPress draft, generates scene prompts via AI, and produces cover im
 \`/improve post_id image prompt\` — Iterate on an existing image
 \`/restyle image [hint] [background]\` — Transform any image into Kanario style
 \`/pick post_id image\` — Upload an image and set it as featured
+\`/ask question\` — Ask a question about how Kanario works
 \`/help\` — Show this message
 
 **Tips:**
@@ -217,7 +230,7 @@ function isInGuild(interaction: DiscordInteraction): boolean {
 const CLOCK_SPINNER = ["🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛"];
 
 export function makeCommandHandler(deps: CommandDeps) {
-  const { credentialStore, discord, wordpress, workflows, createWpClient, resolveImagePath, outputDir, downloadImage } = deps;
+  const { credentialStore, discord, wordpress, workflows, createWpClient, resolveImagePath, outputDir, downloadImage, askService } = deps;
 
   async function handleGenerate(interaction: DiscordInteraction) {
     const token = interaction.token;
@@ -417,6 +430,18 @@ export function makeCommandHandler(deps: CommandDeps) {
     }
   }
 
+  async function handleAskAsync(interaction: DiscordInteraction) {
+    const token = interaction.token;
+    const question = getOptionValue(interaction, "question") || "";
+
+    try {
+      const response = await askService.answer(question);
+      await discord.editOriginalMessage(token, response);
+    } catch (err) {
+      await discord.editOriginalMessage(token, `Sorry, I couldn't answer that right now: ${formatError(err)}`);
+    }
+  }
+
   async function handleRegisterAsync(interaction: DiscordInteraction) {
     const token = interaction.token;
     const userId = getUserId(interaction);
@@ -515,6 +540,11 @@ export function makeCommandHandler(deps: CommandDeps) {
 
     if (commandName === "whoami") {
       handleWhoamiAsync(body).catch((err) => console.error("whoami handler failed:", err));
+      return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
+    }
+
+    if (commandName === "ask") {
+      handleAskAsync(body).catch((err) => console.error("ask handler failed:", err));
       return { type: DEFERRED_CHANNEL_MESSAGE, data: { flags: EPHEMERAL } };
     }
 

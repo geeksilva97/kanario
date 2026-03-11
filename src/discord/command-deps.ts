@@ -4,6 +4,7 @@ import type { GenerateOptions, GenerateResult } from "../workflows/generate.ts";
 import type { ImproveOptions, ImproveResult } from "../workflows/improve.ts";
 import type { PickOptions, PickResult } from "../workflows/pick.ts";
 import type { RestyleOptions, RestyleResult } from "../workflows/restyle.ts";
+import type { AskService } from "./ask.ts";
 
 export interface CredentialStore {
   load(userId: string): WPCredentials | null;
@@ -38,4 +39,5 @@ export interface CommandDeps {
   resolveImagePath(postId: string, imageArg: string): string;
   outputDir: string;
   downloadImage(url: string): Promise<{ path: string; cleanup: () => void }>;
+  askService: AskService;
 }

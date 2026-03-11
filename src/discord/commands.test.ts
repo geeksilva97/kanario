@@ -60,6 +60,9 @@ function makeMockDeps(): CommandDeps & { _calls: Record<string, unknown[][]> } {
     resolveImagePath: track("resolveImagePath", () => "/tmp/prompt-1.png"),
     outputDir: "/tmp/test-output",
     downloadImage: track("downloadImage", async () => ({ path: "/tmp/dl.png", cleanup: () => {} })),
+    askService: {
+      answer: track("askService.answer", async () => "Kanario generates thumbnails for your blog posts!"),
+    },
   };
 }
 
@@ -95,10 +98,10 @@ function loadWithCreds(deps: { _calls: Record<string, unknown[][]> }) {
 }
 
 describe("COMMAND_DEFINITIONS", () => {
-  it("exports 8 slash commands", () => {
-    assert.equal(COMMAND_DEFINITIONS.length, 8);
+  it("exports 9 slash commands", () => {
+    assert.equal(COMMAND_DEFINITIONS.length, 9);
     const names = COMMAND_DEFINITIONS.map((c) => c.name);
-    assert.deepEqual(names, ["generate", "pick", "improve", "restyle", "register", "unregister", "whoami", "help"]);
+    assert.deepEqual(names, ["generate", "pick", "improve", "restyle", "register", "unregister", "whoami", "ask", "help"]);
   });
 });
 
@@ -500,5 +503,44 @@ describe("/improve", () => {
     await tick();
 
     assert.ok(cleanupCalled);
+  });
+});
+
+describe("/ask", () => {
+  it("returns deferred ephemeral response", () => {
+    const deps = makeMockDeps();
+    const { handleInteraction } = makeCommandHandler(deps);
+
+    const result = handleInteraction(makeInteraction("ask", { question: "How do I generate images?" }));
+
+    assert.equal(result.type, 5); // DEFERRED_CHANNEL_MESSAGE
+    assert.equal(result.data?.flags, 64); // EPHEMERAL
+  });
+
+  it("calls askService and edits message with answer", async () => {
+    const deps = makeMockDeps();
+    const { handleInteraction } = makeCommandHandler(deps);
+
+    handleInteraction(makeInteraction("ask", { question: "How do I restyle?" }));
+    await tick();
+
+    assert.equal(deps._calls["askService.answer"].length, 1);
+    assert.equal(deps._calls["askService.answer"][0][0], "How do I restyle?");
+
+    const msg = editMsg(deps);
+    assert.ok(msg.includes("Kanario generates thumbnails"));
+  });
+
+  it("reports error when askService throws", async () => {
+    const deps = makeMockDeps();
+    deps.askService.answer = async () => { throw new Error("LLM unavailable"); };
+    const { handleInteraction } = makeCommandHandler(deps);
+
+    handleInteraction(makeInteraction("ask", { question: "test" }));
+    await tick();
+
+    const msg = editMsg(deps);
+    assert.ok(msg.includes("Sorry"));
+    assert.ok(msg.includes("LLM unavailable"));
   });
 });

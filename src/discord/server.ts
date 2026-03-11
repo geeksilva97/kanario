@@ -11,6 +11,7 @@ import { resolveImagePath } from "../commands/pick.ts";
 import { makeCommandHandler } from "./commands.ts";
 import { makeDiscordMessenger } from "./discord-messenger.ts";
 import { makeImageDownloader } from "./image-downloader.ts";
+import { createAskService } from "./ask.ts";
 import type { CommandDeps } from "./command-deps.ts";
 
 export function hexToUint8Array(hex: string): Uint8Array {
@@ -66,6 +67,7 @@ function buildDeps(): CommandDeps {
     resolveImagePath,
     outputDir: OUTPUT_DIR,
     downloadImage: makeImageDownloader(),
+    askService: createAskService(),
   };
 }
 

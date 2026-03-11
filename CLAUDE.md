@@ -79,6 +79,8 @@ src/
 │   ├── pick.ts               # Core pick workflow (shared by CLI + Discord)
 │   └── restyle.ts            # Core restyle workflow (shared by CLI + Discord)
 └── discord/
+    ├── ask.ts                # AskService — answers user questions about Kanario via LLM (Gemini Flash / Claude Haiku)
+    ├── ask-knowledge.ts      # Static system prompt with Kanario's self-knowledge (commands, workflows, tips)
     ├── command-deps.ts       # Dependency interfaces (CredentialStore, DiscordMessenger, WordPressClient, Workflows, CommandDeps)
     ├── commands.ts           # makeCommandHandler(deps) factory + COMMAND_DEFINITIONS + HELP_TEXT
     ├── discord-messenger.ts  # makeDiscordMessenger(appId, token) — Discord API edit-message adapter
@@ -144,6 +146,7 @@ src/
 ## Important rules
 
 - **Always update README.md** when any code behavior changes.
+- **Always update `src/discord/ask-knowledge.ts`** when commands or workflows change — it's the knowledge base for `/ask`.
 - **Always run `npm test` and `npx tsc --noEmit`** after making changes to verify nothing is broken.
 - Never commit `.env` files or secrets.
 - **Commit headline never has "and"** — if you need "and", you're doing two things at once. Either separate into two commits or find a single headline that covers both.
