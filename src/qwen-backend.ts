@@ -5,8 +5,9 @@ import { encodeMascot } from "./image-generator.ts";
 import type { ImageBackend } from "./image-backend.ts";
 import { HttpError, ImageBackendError } from "./errors/index.ts";
 
-const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_ATTEMPTS = 100; // 5 minutes
+const POLL_INTERVALS_MS = [1_000, 2_000]; // ramp up, then 3s steady
+const POLL_STEADY_MS = 3_000;
+const MAX_POLL_ATTEMPTS = 100; // ~5 minutes
 
 interface RunPodStatus {
   status: "COMPLETED" | "FAILED" | "IN_QUEUE" | "IN_PROGRESS";
@@ -51,28 +52,38 @@ async function pollUntilCompleted(http: HttpClient, jobId: string): Promise<RunP
       throw ImageBackendError.runpodJobFailed(jobId, status);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    const delay = POLL_INTERVALS_MS[attempt] ?? POLL_STEADY_MS;
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
   throw ImageBackendError.runpodPollingTimeout(jobId, MAX_POLL_ATTEMPTS);
+}
+
+const blankCanvasCache = new Map<string, string>();
+
+async function getBlankCanvas(wide: boolean): Promise<string> {
+  const key = wide ? "wide" : "square";
+  const cached = blankCanvasCache.get(key);
+  if (cached) return cached;
+
+  const w = wide ? 1280 : 1024;
+  const h = wide ? 720 : 1024;
+  const blank = await sharp({
+    create: { width: w, height: h, channels: 3, background: { r: 255, g: 255, b: 255 } },
+  }).png().toBuffer();
+  const result = blank.toString("base64");
+  blankCanvasCache.set(key, result);
+  return result;
 }
 
 export function createQwenBackend(http: HttpClient): ImageBackend {
   return {
     async generate({ prompt, mascotPath, seed, wide, onProgress }) {
       const log = onProgress ?? (() => {});
-      
-      let mascotBase64: string;
-      if (mascotPath) {
-        mascotBase64 = await encodeMascot(mascotPath, wide);
-      } else {
-        const w = wide ? 1280 : 1024;
-        const h = wide ? 720 : 1024;
-        const blank = await sharp({
-          create: { width: w, height: h, channels: 3, background: { r: 255, g: 255, b: 255 } },
-        }).png().toBuffer();
-        mascotBase64 = blank.toString("base64");
-      }
+
+      const mascotBase64 = mascotPath
+        ? await encodeMascot(mascotPath, wide)
+        : await getBlankCanvas(wide);
 
       const body = {
         input: {

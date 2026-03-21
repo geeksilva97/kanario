@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createHttpClient } from "../http.ts";
@@ -11,10 +11,10 @@ export function makeImageDownloader(): CommandDeps["downloadImage"] {
     const response = await http.request(url);
     const buffer = Buffer.from(await response.arrayBuffer());
     const tempPath = path.join(os.tmpdir(), `kanario-improve-${Date.now()}.png`);
-    fs.writeFileSync(tempPath, buffer);
+    await fsp.writeFile(tempPath, buffer);
     return {
       path: tempPath,
-      cleanup: () => { try { fs.unlinkSync(tempPath); } catch {} },
+      cleanup: () => { fsp.unlink(tempPath).catch(() => {}); },
     };
   };
 }

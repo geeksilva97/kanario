@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
@@ -27,7 +28,7 @@ async function downloadToTemp(url: string): Promise<string> {
   const buffer = Buffer.from(await response.arrayBuffer());
   const ext = path.extname(new URL(url).pathname) || ".png";
   const tempPath = path.join(os.tmpdir(), `kanario-pick-${Date.now()}${ext}`);
-  fs.writeFileSync(tempPath, buffer);
+  await fsp.writeFile(tempPath, buffer);
   return tempPath;
 }
 

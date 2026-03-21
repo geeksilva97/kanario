@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import type { HttpClient } from "./http.ts";
 import { HttpError, WordPressError } from "./errors/index.ts";
 
@@ -105,7 +105,7 @@ export async function uploadMedia(
   imagePath: string,
   filename: string,
 ): Promise<number> {
-  const body = fs.readFileSync(imagePath);
+  const body = new Uint8Array(await fsp.readFile(imagePath));
 
   const response = await wrapHttpError(
     http.request("/media", {

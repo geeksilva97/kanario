@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import type { HttpClient } from "./http.ts";
@@ -39,9 +39,18 @@ export async function padToWidescreen(mascotPath: string): Promise<string> {
   return padded.toString("base64");
 }
 
+const mascotCache = new Map<string, string>();
+
 export async function encodeMascot(mascotPath: string, wide: boolean): Promise<string> {
-  if (wide) return padToWidescreen(mascotPath);
-  return fs.readFileSync(mascotPath).toString("base64");
+  const key = `${mascotPath}:${wide}`;
+  const cached = mascotCache.get(key);
+  if (cached) return cached;
+
+  const result = wide
+    ? await padToWidescreen(mascotPath)
+    : (await fsp.readFile(mascotPath)).toString("base64");
+  mascotCache.set(key, result);
+  return result;
 }
 
 // Backend factory
@@ -64,7 +73,7 @@ export async function generateSingleImage(
 ): Promise<string> {
   const { prompt, mascotPath, outputDir, filename, seed, wide = false, onProgress } = options;
 
-  fs.mkdirSync(outputDir, { recursive: true });
+  await fsp.mkdir(outputDir, { recursive: true });
 
   const log = onProgress ?? console.log;
   log(`Generating ${filename} ...`);
@@ -72,7 +81,7 @@ export async function generateSingleImage(
   const pngBuffer = await backend.generate({ prompt, mascotPath, seed, wide, onProgress });
 
   const outputPath = path.join(outputDir, filename);
-  fs.writeFileSync(outputPath, pngBuffer);
+  await fsp.writeFile(outputPath, pngBuffer);
   log(`Saved ${filename} (${(pngBuffer.length / 1024).toFixed(0)} KB)`);
 
   return outputPath;

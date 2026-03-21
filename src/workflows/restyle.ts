@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
@@ -77,7 +78,7 @@ export async function restyleWorkflow(
   const h = wide ? CANVAS_HEIGHT : 1024;
   const resizedBuf = await sharp(sourceImagePath).resize(w, h, { fit: "cover" }).png().toBuffer();
   const tempPath = path.join(os.tmpdir(), `kanario-restyle-canvas-${Date.now()}.png`);
-  fs.writeFileSync(tempPath, resizedBuf);
+  await fsp.writeFile(tempPath, resizedBuf);
 
   // Step 3: Generate restyled image (wide=false since we already sized the canvas)
   log(`[3/3] Generating restyled image via Qwen ...`);
@@ -100,6 +101,6 @@ export async function restyleWorkflow(
 
     return { id, imagePath, outputDir };
   } finally {
-    try { fs.unlinkSync(tempPath); } catch {}
+    try { await fsp.unlink(tempPath); } catch {}
   }
 }

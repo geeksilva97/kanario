@@ -51,11 +51,13 @@ const promptSchema = {
   required: ["prompts"],
 };
 
+let geminiClient: GoogleGenAI | undefined;
+function getGeminiClient(): GoogleGenAI {
+  return (geminiClient ??= new GoogleGenAI({ vertexai: true, apiKey: config.geminiApiKey }));
+}
+
 export async function generatePrompts(post: WPPost, hint?: string): Promise<PromptResult> {
-  const ai = new GoogleGenAI({
-    vertexai: true,
-    apiKey: config.geminiApiKey,
-  });
+  const ai = getGeminiClient();
 
   try {
     const response = await ai.models.generateContent({

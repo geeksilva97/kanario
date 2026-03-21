@@ -1,11 +1,11 @@
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { config, OUTPUT_DIR, MASCOTS } from "../config.ts";
 import type { HttpClient } from "../http.ts";
 import { fetchDraft } from "../wordpress.ts";
 import { generatePrompts as claudeGeneratePrompts, type ImagePrompt } from "../prompt-generator.ts";
 import { generatePrompts as geminiGeneratePrompts } from "../gemini-generator.ts";
-import { generateSingleImage, createImageBackend } from "../image-generator.ts";
+import { generateSingleImage, createImageBackend, encodeMascot } from "../image-generator.ts";
 import { createRunpodClient } from "../qwen-backend.ts";
 import { summarizePost } from "../summarizer.ts";
 import type { ImageModel } from "../image-backend.ts";
@@ -97,6 +97,11 @@ export async function generateWorkflow(
     log(`  ${job.label}`);
   }
 
+  // Pre-warm: create output dir + encode mascots before parallel workers start
+  await fsp.mkdir(outputDir, { recursive: true });
+  const uniqueMascotPaths = [...new Set(jobs.map((j) => j.mascotPath).filter(Boolean))] as string[];
+  await Promise.all(uniqueMascotPaths.map((p) => encodeMascot(p, wide)));
+
   const concurrency = backend.maxConcurrency ?? jobs.length;
   log(`  Submitting ${jobs.length} jobs (concurrency: ${concurrency}) ...`);
   const imagesStart = Date.now();
@@ -121,7 +126,7 @@ export async function generateWorkflow(
     prompts: result.prompts,
   };
   const metadataPath = path.join(outputDir, "prompts.json");
-  fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+  await fsp.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
   log(`  Saved ${metadataPath}`);
 
   return {

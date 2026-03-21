@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fsp from "node:fs/promises";
 import { DISCORD_API_BASE } from "../config.ts";
 import { createHttpClient, type HttpRequestInit } from "../http.ts";
 import { HttpError } from "../errors/index.ts";
@@ -56,7 +56,7 @@ export function makeDiscordMessenger(applicationId: string, botToken: string): D
 
       // File parts
       for (const [i, file] of files.entries()) {
-        const fileData = fs.readFileSync(file.path);
+        const fileData = await fsp.readFile(file.path);
         parts.push(
           Buffer.from(
             `--${boundary}\r\nContent-Disposition: form-data; name="files[${i}]"; filename="${file.name}"\r\nContent-Type: image/png\r\n\r\n`,

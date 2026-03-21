@@ -25,11 +25,18 @@ ${post.content}`;
   return summarizeWithClaude(userMessage);
 }
 
+let geminiClient: GoogleGenAI | undefined;
+function getGeminiClient(): GoogleGenAI {
+  return (geminiClient ??= new GoogleGenAI({ vertexai: true, apiKey: config.geminiApiKey }));
+}
+
+let anthropicClient: Anthropic | undefined;
+function getAnthropicClient(): Anthropic {
+  return (anthropicClient ??= new Anthropic({ apiKey: config.anthropicApiKey || undefined }));
+}
+
 async function summarizeWithGemini(userMessage: string): Promise<string> {
-  const ai = new GoogleGenAI({
-    vertexai: true,
-    apiKey: config.geminiApiKey,
-  });
+  const ai = getGeminiClient();
 
   try {
     const response = await ai.models.generateContent({
@@ -51,7 +58,7 @@ async function summarizeWithGemini(userMessage: string): Promise<string> {
 }
 
 async function summarizeWithClaude(userMessage: string, model: string = MODELS.claudeSummarize): Promise<string> {
-  const client = new Anthropic({ apiKey: config.anthropicApiKey || undefined });
+  const client = getAnthropicClient();
 
   const message = await client.messages.create({
     model,

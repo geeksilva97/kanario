@@ -35,8 +35,13 @@ export function mapRawPrompts(raw: { prompts: RawPrompt[] }): ImagePrompt[] {
   }));
 }
 
+let anthropicClient: Anthropic | undefined;
+function getAnthropicClient(): Anthropic {
+  return (anthropicClient ??= new Anthropic({ apiKey: config.anthropicApiKey }));
+}
+
 export async function generatePrompts(post: WPPost, hint?: string): Promise<PromptResult> {
-  const client = new Anthropic({ apiKey: config.anthropicApiKey });
+  const client = getAnthropicClient();
 
   const message = await client.messages.create({
     model: MODELS.claudePrompt,
