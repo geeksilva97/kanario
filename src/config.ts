@@ -49,8 +49,8 @@ export const RESTYLE_TEMPLATE = fs.readFileSync(path.join(PROMPTS_DIR, "restyle-
 export const MODELS = {
   claudePrompt: "claude-sonnet-4-20250514",
   claudeSummarize: "claude-haiku-4-5-20251001",
-  geminiPrompt: "gemini-3-pro-preview",
-  geminiSummarize: "gemini-2.5-flash",
+  geminiPrompt: "gemini-3.1-pro-preview",
+  geminiSummarize: "gemini-3.1-flash-lite-preview",
 } as const;
 
 export const HTTP_TIMEOUT_MS = 30_000;
