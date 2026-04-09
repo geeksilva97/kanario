@@ -6,3 +6,4 @@ output/
 .claude/
 data/
 *.db
+.claude/healthcheck/
